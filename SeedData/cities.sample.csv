@@ -1,0 +1,7 @@
+CountryName,CountryIsoCode,CityName,PostalCode,PopulationMillions,Continent
+United States,USA,Atlanta,30301,4.99,North America
+Canada,CAN,Toronto,M5H 2N2,6.20,North America
+Germany,DEU,Munich,80331,1.50,Europe
+India,IND,Bengaluru,560001,12.30,Asia
+Brazil,BRA,Santos,11010-080,0.44,South America
+

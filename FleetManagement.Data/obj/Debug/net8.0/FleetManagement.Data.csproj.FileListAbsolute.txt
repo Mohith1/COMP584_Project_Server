@@ -1,0 +1,15 @@
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\bin\Debug\net8.0\FleetManagement.Data.deps.json
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\bin\Debug\net8.0\FleetManagement.Data.runtimeconfig.json
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\bin\Debug\net8.0\FleetManagement.Data.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\bin\Debug\net8.0\FleetManagement.Data.pdb
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.csproj.AssemblyReference.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.AssemblyInfoInputs.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.AssemblyInfo.cs
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.csproj.CoreCompileInputs.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.sourcelink.json
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\refint\FleetManagement.Data.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.pdb
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\FleetManagement.Data.genruntimeconfig.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Data\obj\Debug\net8.0\ref\FleetManagement.Data.dll

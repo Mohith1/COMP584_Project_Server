@@ -1,0 +1,16 @@
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\bin\Debug\net8.0\FleetManagement.Services.deps.json
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\bin\Debug\net8.0\FleetManagement.Services.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\bin\Debug\net8.0\FleetManagement.Services.pdb
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\bin\Debug\net8.0\FleetManagement.Data.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\bin\Debug\net8.0\FleetManagement.Data.pdb
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.csproj.AssemblyReference.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.AssemblyInfoInputs.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.AssemblyInfo.cs
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.csproj.CoreCompileInputs.cache
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.sourcelink.json
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetMan.D22F53E2.Up2Date
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\refint\FleetManagement.Services.dll
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\FleetManagement.Services.pdb
+C:\Users\mk504221\Projects\COMP584_Project_Server\FleetManagement.Services\obj\Debug\net8.0\ref\FleetManagement.Services.dll
