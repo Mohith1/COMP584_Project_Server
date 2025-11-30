@@ -1,0 +1,23 @@
+# Ignore files that shouldn't be deployed to Vercel
+# Since we're using Vercel as a proxy, we don't need to deploy the .NET files
+
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/node_modules/
+*.db
+*.db-shm
+*.db-wal
+*.sln
+*.csproj
+*.cs
+Dockerfile
+.dockerignore
+railway.json
+render.yaml
+*.md
+!README.md
+LICENSE
+SeedData/
+

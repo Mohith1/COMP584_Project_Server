@@ -5,9 +5,35 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add CORS support for Vercel proxy and frontend applications
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowVercelAndLocalhost", policy =>
+    {
+        policy.SetIsOriginAllowed(origin =>
+            {
+                // Allow localhost for development
+                if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+                    return true;
+                
+                // Allow all Vercel deployments (both preview and production)
+                if (origin.EndsWith(".vercel.app") || origin.EndsWith(".vercel.app/"))
+                    return true;
+                
+                return false;
+            })
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+// Enable CORS (must be before other middleware)
+app.UseCors("AllowVercelAndLocalhost");
+
 // Enable Swagger in all environments (can be restricted to Development if needed)
 app.UseSwagger();
 app.UseSwaggerUI(c =>

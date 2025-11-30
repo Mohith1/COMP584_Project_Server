@@ -1,21 +1,19 @@
 {
   "version": 2,
+  "comment": "This is an example configuration for proxying to an external .NET API",
+  "instructions": "1. Deploy your .NET API to Railway/Render/Azure/etc. 2. Replace YOUR-DOTNET-API-URL with your actual API URL. 3. Rename this file to vercel.json",
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://YOUR-DOTNET-API-URL.railway.app/api/:path*"
+      "destination": "https://your-api.railway.app/api/:path*"
     },
     {
       "source": "/swagger/:path*",
-      "destination": "https://YOUR-DOTNET-API-URL.railway.app/swagger/:path*"
+      "destination": "https://your-api.railway.app/swagger/:path*"
     },
     {
       "source": "/weatherforecast",
-      "destination": "https://YOUR-DOTNET-API-URL.railway.app/weatherforecast"
-    },
-    {
-      "source": "/swagger",
-      "destination": "https://YOUR-DOTNET-API-URL.railway.app/swagger"
+      "destination": "https://your-api.railway.app/weatherforecast"
     }
   ],
   "headers": [
@@ -35,15 +33,7 @@
           "value": "Content-Type, Authorization, X-Requested-With"
         }
       ]
-    },
-    {
-      "source": "/swagger/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
-      ]
     }
   ]
 }
+

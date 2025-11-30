@@ -8,6 +8,10 @@ A .NET 8.0 ASP.NET Core Web API for Fleet Management.
 
 **Vercel does not natively support .NET applications.** Vercel is optimized for serverless functions in Node.js, Python, Go, and Ruby, and does not provide runtime support for .NET Core/ASP.NET Core applications.
 
+**However, you CAN use Vercel as a proxy to your .NET API!** See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for detailed instructions on setting up a hybrid deployment (Vercel proxy → .NET API on Railway/Render/Azure).
+
+**Quick Setup**: See [SETUP_VERCEL.md](./SETUP_VERCEL.md) for a step-by-step guide.
+
 ### Recommended Deployment Platforms for .NET
 
 This application can be deployed to the following platforms that support .NET:
