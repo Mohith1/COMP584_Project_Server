@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: fleetmanagement-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:10000
+    healthCheckPath: /swagger
+

@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "builds": [],
+  "routes": [],
+  "functions": {},
+  "note": "Vercel does not natively support .NET applications. This file is a placeholder. Please use one of the alternative deployment platforms listed in the README.md file."
+}
+

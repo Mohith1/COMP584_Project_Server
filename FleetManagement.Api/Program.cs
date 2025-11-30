@@ -1,114 +1,48 @@
-using System.Text;
-using FleetManagement.Api.Authorization;
-using FleetManagement.Api.Extensions;
-using FleetManagement.Api.Middleware;
-using FleetManagement.Services.Constants;
-using FleetManagement.Services.Extensions;
-using FleetManagement.Services.Options;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using Okta.AspNetCore;
-using Serilog;
-
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((context, configuration) =>
-    configuration.ReadFrom.Configuration(context.Configuration));
-
-builder.Services.AddFleetManagementCore(builder.Configuration);
-builder.Services.AddControllers();
+// Add services to the container.
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    var jwtScheme = new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter a valid JWT bearer token."
-    };
-
-    options.AddSecurityDefinition("Bearer", jwtScheme);
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        { jwtScheme, Array.Empty<string>() }
-    });
-});
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("FleetCors", policy =>
-    {
-        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["*"];
-        policy.WithOrigins(origins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
-
-var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
-                  ?? throw new InvalidOperationException("Jwt configuration is missing.");
-
-builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
-    {
-        options.RequireHttpsMetadata = true;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings.Issuer,
-            ValidAudience = jwtSettings.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SigningKey))
-        };
-    })
-    .AddOktaWebApi(new OktaWebApiOptions
-    {
-        OktaDomain = builder.Configuration["Okta:Domain"],
-        AuthorizationServerId = builder.Configuration["Okta:AuthorizationServerId"],
-        Audience = builder.Configuration["Okta:Audience"]
-    });
-
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(AuthorizationPolicies.OwnerOrAdmin, policy =>
-    {
-        policy.RequireAssertion(context =>
-            context.User.IsInRole(SystemRoles.Owner) ||
-            context.User.IsInRole(SystemRoles.Administrator));
-    });
-
-    options.AddPolicy(AuthorizationPolicies.AdminOnly, policy =>
-    {
-        policy.RequireRole(SystemRoles.Administrator);
-    });
-});
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-await app.SeedAsync();
-
-if (app.Environment.IsDevelopment())
+// Configure the HTTP request pipeline.
+// Enable Swagger in all environments (can be restricted to Development if needed)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fleet Management API v1");
+    c.RoutePrefix = "swagger";
+});
 
-app.UseSerilogRequestLogging();
-app.UseHttpsRedirection();
-app.UseCors("FleetCors");
-app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
+// HTTPS redirection - skip in containerized environments where reverse proxy handles HTTPS
+// Uncomment the line below if you need HTTPS redirection in production
+// app.UseHttpsRedirection();
+
+var summaries = new[]
+{
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+};
+
+app.MapGet("/weatherforecast", () =>
+{
+    var forecast =  Enumerable.Range(1, 5).Select(index =>
+        new WeatherForecast
+        (
+            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            Random.Shared.Next(-20, 55),
+            summaries[Random.Shared.Next(summaries.Length)]
+        ))
+        .ToArray();
+    return forecast;
+})
+.WithName("GetWeatherForecast")
+.WithOpenApi();
 
 app.Run();
+
+record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
