@@ -47,12 +47,23 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Log the port the app is listening on (for debugging)
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-var urls = builder.Configuration["ASPNETCORE_URLS"] ?? $"http://+:{port}";
-Console.WriteLine($"Application starting on: {urls}");
+// Log configuration for debugging
+var port = Environment.GetEnvironmentVariable("PORT");
+var aspnetcoreUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+Console.WriteLine($"PORT env var: {port ?? "not set"}");
+Console.WriteLine($"ASPNETCORE_URLS env var: {aspnetcoreUrls ?? "not set"}");
+Console.WriteLine($"Application starting...");
 
 // Configure the HTTP request pipeline.
+// Health check endpoint should be registered early (before other middleware that might block it)
+app.MapGet("/health", () => 
+{
+    Console.WriteLine("Health check endpoint called");
+    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+})
+    .WithName("HealthCheck")
+    .WithOpenApi();
+
 // Enable CORS (must be before other middleware)
 app.UseCors("AllowVercelAndLocalhost");
 
@@ -67,11 +78,6 @@ app.UseSwaggerUI(c =>
 // HTTPS redirection - skip in containerized environments where reverse proxy handles HTTPS
 // Uncomment the line below if you need HTTPS redirection in production
 // app.UseHttpsRedirection();
-
-// Health check endpoint (for Railway)
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-    .WithName("HealthCheck")
-    .WithOpenApi();
 
 var summaries = new[]
 {
