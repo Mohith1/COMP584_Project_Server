@@ -8,25 +8,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure Database (optional - won't crash if connection string is missing)
+// Configure Database (optional - commented out for now to allow app to start)
+// TODO: Uncomment and configure when ready to use database
 // Note: Add Npgsql.EntityFrameworkCore.PostgreSQL package for PostgreSQL support
-var postgresConnection = builder.Configuration.GetConnectionString("PostgreSQL");
-if (!string.IsNullOrEmpty(postgresConnection))
-{
-    // TODO: Uncomment when Npgsql package is added
-    // builder.Services.AddDbContext<FleetDbContext>(options =>
-    //     options.UseNpgsql(postgresConnection));
-    
-    // Temporary: Use in-memory until PostgreSQL package is added
-    builder.Services.AddDbContext<FleetDbContext>(options =>
-        options.UseInMemoryDatabase("FleetManagementDb"));
-}
-else
-{
-    // Fallback: Use in-memory database for health checks if no connection string
-    builder.Services.AddDbContext<FleetDbContext>(options =>
-        options.UseInMemoryDatabase("FleetManagementDb"));
-}
+// var postgresConnection = builder.Configuration.GetConnectionString("PostgreSQL");
+// if (!string.IsNullOrEmpty(postgresConnection))
+// {
+//     builder.Services.AddDbContext<FleetDbContext>(options =>
+//         options.UseNpgsql(postgresConnection));
+//     
+//     // Add Identity services if using database
+//     builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
+//         .AddEntityFrameworkStores<FleetDbContext>();
+// }
 
 // Add CORS support for Vercel proxy and frontend applications
 builder.Services.AddCors(options =>
