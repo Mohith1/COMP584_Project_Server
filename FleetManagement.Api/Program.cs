@@ -1,9 +1,32 @@
+using Microsoft.EntityFrameworkCore;
+using FleetManagement.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure Database (optional - won't crash if connection string is missing)
+// Note: Add Npgsql.EntityFrameworkCore.PostgreSQL package for PostgreSQL support
+var postgresConnection = builder.Configuration.GetConnectionString("PostgreSQL");
+if (!string.IsNullOrEmpty(postgresConnection))
+{
+    // TODO: Uncomment when Npgsql package is added
+    // builder.Services.AddDbContext<FleetDbContext>(options =>
+    //     options.UseNpgsql(postgresConnection));
+    
+    // Temporary: Use in-memory until PostgreSQL package is added
+    builder.Services.AddDbContext<FleetDbContext>(options =>
+        options.UseInMemoryDatabase("FleetManagementDb"));
+}
+else
+{
+    // Fallback: Use in-memory database for health checks if no connection string
+    builder.Services.AddDbContext<FleetDbContext>(options =>
+        options.UseInMemoryDatabase("FleetManagementDb"));
+}
 
 // Add CORS support for Vercel proxy and frontend applications
 builder.Services.AddCors(options =>
@@ -45,6 +68,11 @@ app.UseSwaggerUI(c =>
 // HTTPS redirection - skip in containerized environments where reverse proxy handles HTTPS
 // Uncomment the line below if you need HTTPS redirection in production
 // app.UseHttpsRedirection();
+
+// Health check endpoint (for Railway)
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+    .WithName("HealthCheck")
+    .WithOpenApi();
 
 var summaries = new[]
 {
