@@ -47,6 +47,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Log the port the app is listening on (for debugging)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var urls = builder.Configuration["ASPNETCORE_URLS"] ?? $"http://+:{port}";
+Console.WriteLine($"Application starting on: {urls}");
+
 // Configure the HTTP request pipeline.
 // Enable CORS (must be before other middleware)
 app.UseCors("AllowVercelAndLocalhost");

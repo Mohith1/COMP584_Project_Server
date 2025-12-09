@@ -21,8 +21,22 @@ RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+# Expose default port (platforms can override via PORT env var)
 EXPOSE 8080
+
+# Default to port 8080, but allow platforms to override via ASPNETCORE_URLS or PORT env vars
+# ASP.NET Core will automatically use PORT env var if ASPNETCORE_URLS is not set
 ENV ASPNETCORE_URLS=http://+:8080
+
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "FleetManagement.Api.dll"]
+
+
+
+
+
+
+
+
 
