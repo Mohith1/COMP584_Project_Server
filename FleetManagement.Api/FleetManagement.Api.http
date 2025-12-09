@@ -1,6 +1,17 @@
 @FleetManagement.Api_HostAddress = http://localhost:5224
 
-GET {{FleetManagement.Api_HostAddress}}/weatherforecast/
+### Health Check
+GET {{FleetManagement.Api_HostAddress}}/health
 Accept: application/json
 
+### Root Endpoint
+GET {{FleetManagement.Api_HostAddress}}/
+Accept: application/json
+
+###
+### TODO: Add Fleet Management API endpoints here
+### Examples:
+### GET {{FleetManagement.Api_HostAddress}}/api/vehicles
+### GET {{FleetManagement.Api_HostAddress}}/api/fleets
+### POST {{FleetManagement.Api_HostAddress}}/api/vehicles
 ###
