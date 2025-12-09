@@ -3,6 +3,11 @@ using FleetManagement.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure port for Railway - Railway sets PORT env var
+// Must bind to 0.0.0.0 (all interfaces) not just localhost
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -48,23 +53,36 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Log configuration for debugging
-var port = Environment.GetEnvironmentVariable("PORT");
-var aspnetcoreUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
-Console.WriteLine($"PORT env var: {port ?? "not set"}");
-Console.WriteLine($"ASPNETCORE_URLS env var: {aspnetcoreUrls ?? "not set"}");
-Console.WriteLine($"Application starting...");
+var actualPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+Console.WriteLine($"[Railway] PORT env var: {actualPort}");
+Console.WriteLine($"[Railway] Application binding to: http://0.0.0.0:{actualPort}");
+Console.WriteLine($"[Railway] Application starting...");
 
 // Configure the HTTP request pipeline.
-// Health check endpoint should be registered early (before other middleware that might block it)
+// CRITICAL: Health check endpoint MUST be registered FIRST, before any middleware
+// This ensures Railway can immediately check /health without CORS or other middleware blocking it
 app.MapGet("/health", () => 
 {
-    Console.WriteLine("Health check endpoint called");
-    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+    return Results.Ok(new { 
+        status = "healthy", 
+        timestamp = DateTime.UtcNow,
+        port = actualPort
+    });
 })
     .WithName("HealthCheck")
     .WithOpenApi();
 
-// Enable CORS (must be before other middleware)
+// Also add root endpoint for Railway healthcheck fallback
+app.MapGet("/", () => Results.Ok(new { 
+    status = "ok", 
+    message = "Fleet Management API is running",
+    health = "/health",
+    swagger = "/swagger"
+}))
+    .WithName("Root")
+    .WithOpenApi();
+
+// Enable CORS (must be before other middleware, but after health endpoint)
 app.UseCors("AllowVercelAndLocalhost");
 
 // Enable Swagger in all environments (can be restricted to Development if needed)
