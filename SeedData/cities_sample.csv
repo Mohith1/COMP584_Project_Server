@@ -1,0 +1,13 @@
+CityName,CountryIsoCode,PostalCode,PopulationMillions,CountryName,Continent
+New York,US,10001,8.4,United States,North America
+Los Angeles,US,90001,3.9,United States,North America
+Chicago,US,60601,2.7,United States,North America
+Houston,US,77001,2.3,United States,North America
+Phoenix,US,85001,1.6,United States,North America
+London,GB,SW1A 1AA,9.0,United Kingdom,Europe
+Manchester,GB,M1 1AD,2.8,United Kingdom,Europe
+Birmingham,GB,B1 1AA,2.6,United Kingdom,Europe
+Toronto,CA,M5H 2N2,2.9,Canada,North America
+Vancouver,CA,V6B 1A1,2.5,Canada,North America
+Montreal,CA,H2Y 1A6,1.8,Canada,North America
+
