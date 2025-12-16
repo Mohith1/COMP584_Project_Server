@@ -72,19 +72,36 @@ builder.Services.AddCors(options =>
     {
         policy.SetIsOriginAllowed(origin =>
             {
+                Console.WriteLine($"[CORS] Checking origin: {origin}");
+                
                 // Allow localhost for development
                 if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+                {
+                    Console.WriteLine($"[CORS] Allowed localhost origin: {origin}");
                     return true;
+                }
                 
                 // Allow all Vercel deployments (both preview and production)
                 if (origin.EndsWith(".vercel.app") || origin.EndsWith(".vercel.app/"))
+                {
+                    Console.WriteLine($"[CORS] Allowed Vercel origin: {origin}");
                     return true;
+                }
                 
+                Console.WriteLine($"[CORS] REJECTED origin: {origin}");
                 return false;
             })
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
+    });
+    
+    // Add a fallback permissive policy for development/debugging
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -96,9 +113,12 @@ Console.WriteLine($"[Railway] PORT env var: {actualPort}");
 Console.WriteLine($"[Railway] Application binding to: http://0.0.0.0:{actualPort}");
 Console.WriteLine($"[Railway] Application starting...");
 
+// CRITICAL: CORS must be enabled FIRST before any endpoint mapping
+// This ensures preflight OPTIONS requests are handled correctly for all methods (POST, PUT, DELETE)
+app.UseCors("AllowVercelAndLocalhost");
+
 // Configure the HTTP request pipeline.
-// CRITICAL: Health check endpoint MUST be registered FIRST, before any middleware
-// This ensures Railway can immediately check /health without CORS or other middleware blocking it
+// Health check endpoint for Railway
 app.MapGet("/health", () => 
 {
     return Results.Ok(new { 
@@ -108,7 +128,8 @@ app.MapGet("/health", () =>
     });
 })
     .WithName("HealthCheck")
-    .WithOpenApi();
+    .WithOpenApi()
+    .RequireCors("AllowVercelAndLocalhost");
 
 // Also add root endpoint for Railway healthcheck fallback
 app.MapGet("/", () => Results.Ok(new { 
@@ -118,10 +139,8 @@ app.MapGet("/", () => Results.Ok(new {
     swagger = "/swagger"
 }))
     .WithName("Root")
-    .WithOpenApi();
-
-// Enable CORS (must be before other middleware, but after health endpoint)
-app.UseCors("AllowVercelAndLocalhost");
+    .WithOpenApi()
+    .RequireCors("AllowVercelAndLocalhost");
 
 // Enable Swagger in all environments (can be restricted to Development if needed)
 app.UseSwagger();
@@ -135,7 +154,10 @@ app.UseSwaggerUI(c =>
 // Uncomment the line below if you need HTTPS redirection in production
 // app.UseHttpsRedirection();
 
-// Map controllers
+// Add routing middleware
+app.UseRouting();
+
+// Map controllers with CORS support
 app.MapControllers();
 
 app.Run();
