@@ -12,3 +12,9 @@ public class TelemetryDto
     public DateTimeOffset CapturedAtUtc { get; set; }
 }
 
+
+
+
+
+
+

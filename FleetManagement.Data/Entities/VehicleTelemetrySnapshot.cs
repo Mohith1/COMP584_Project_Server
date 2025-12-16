@@ -18,3 +18,12 @@ public class VehicleTelemetrySnapshot
     public Vehicle Vehicle { get; set; } = null!;
 }
 
+
+
+
+
+
+
+
+
+

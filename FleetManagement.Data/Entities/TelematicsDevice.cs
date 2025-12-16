@@ -18,3 +18,12 @@ public class TelematicsDevice
     public Vehicle Vehicle { get; set; } = null!;
 }
 
+
+
+
+
+
+
+
+
+

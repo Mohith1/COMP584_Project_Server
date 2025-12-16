@@ -24,3 +24,12 @@ public class Owner
     public ICollection<FleetUser> FleetUsers { get; set; } = new List<FleetUser>();
 }
 
+
+
+
+
+
+
+
+
+

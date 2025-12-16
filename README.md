@@ -12,6 +12,8 @@ A .NET 8.0 ASP.NET Core Web API for Fleet Management.
 
 **Quick Setup**: See [SETUP_VERCEL.md](./SETUP_VERCEL.md) for a step-by-step guide.
 
+**Integrating Client + Server**: See [INTEGRATE_CLIENT_SERVER.md](./INTEGRATE_CLIENT_SERVER.md) for complete instructions on deploying both your frontend and backend together on Vercel.
+
 ### Recommended Deployment Platforms for .NET
 
 This application can be deployed to the following platforms that support .NET:
@@ -54,7 +56,27 @@ Best for enterprise deployments with full .NET ecosystem support.
    - Azure CLI
    - Git deployment
 
-#### 4. **Fly.io**
+#### 4. **AWS Elastic Beanstalk** (Amazon Web Services)
+Excellent for enterprise deployments with full AWS ecosystem integration.
+
+**Steps:**
+1. Install AWS Toolkit for Visual Studio
+2. Right-click project → Publish to AWS Elastic Beanstalk
+3. Follow the wizard to deploy
+4. Or use AWS CLI: `eb init` and `eb deploy`
+
+**See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for detailed AWS deployment options** (Elastic Beanstalk, App Runner, ECS, EC2).
+
+#### 4b. **AWS Lambda** (Serverless)
+Serverless deployment - pay per request, auto-scaling.
+
+**Quick Start:** See [LAMBDA_QUICK_START.md](./LAMBDA_QUICK_START.md) for fastest deployment.
+
+**Full Guide:** See [AWS_LAMBDA_DEPLOYMENT.md](./AWS_LAMBDA_DEPLOYMENT.md) for complete Lambda deployment options.
+
+**Best for:** Low to moderate traffic, event-driven architectures.
+
+#### 5. **Fly.io**
 Good for global distribution with edge computing.
 
 **Steps:**

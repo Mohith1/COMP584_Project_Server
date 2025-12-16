@@ -17,3 +17,12 @@ public class City
     public ICollection<Owner> Owners { get; set; } = new List<Owner>();
 }
 
+
+
+
+
+
+
+
+
+

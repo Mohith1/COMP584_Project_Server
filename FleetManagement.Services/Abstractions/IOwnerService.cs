@@ -11,3 +11,9 @@ public interface IOwnerService
     Task<bool> DeleteOwnerAsync(Guid id);
 }
 
+
+
+
+
+
+

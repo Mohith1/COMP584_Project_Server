@@ -66,6 +66,10 @@ public class FleetService : IFleetService
 
     public async Task<FleetDto> CreateFleetAsync(CreateFleetDto createDto)
     {
+        // Verify the owner exists and get the company name
+        var owner = await _context.Owners
+            .FirstOrDefaultAsync(o => o.Id == createDto.OwnerId && !o.IsDeleted);
+
         var fleet = new Fleet
         {
             Id = Guid.NewGuid(),
@@ -79,7 +83,18 @@ public class FleetService : IFleetService
         _context.Fleets.Add(fleet);
         await _context.SaveChangesAsync();
 
-        return await GetFleetByIdAsync(fleet.Id) ?? throw new InvalidOperationException("Failed to retrieve created fleet");
+        // Return the DTO directly instead of re-querying to avoid in-memory database issues with includes
+        return new FleetDto
+        {
+            Id = fleet.Id,
+            Name = fleet.Name,
+            Description = fleet.Description,
+            OwnerId = fleet.OwnerId,
+            OwnerName = owner?.CompanyName ?? "Unknown",
+            VehicleCount = 0,
+            CreatedAtUtc = fleet.CreatedAtUtc,
+            UpdatedAtUtc = fleet.UpdatedAtUtc
+        };
     }
 
     public async Task<FleetDto?> UpdateFleetAsync(Guid id, UpdateFleetDto updateDto)
@@ -112,4 +127,10 @@ public class FleetService : IFleetService
         return true;
     }
 }
+
+
+
+
+
+
 

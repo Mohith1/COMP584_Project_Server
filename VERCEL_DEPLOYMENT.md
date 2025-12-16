@@ -23,6 +23,7 @@ Choose one:
 - **Railway** (easiest): https://railway.app
 - **Render**: https://render.com  
 - **Azure App Service**: https://azure.microsoft.com
+- **AWS Elastic Beanstalk**: https://aws.amazon.com/elasticbeanstalk/
 - **Fly.io**: https://fly.io
 
 Follow the deployment instructions in `DEPLOYMENT.md`.
@@ -33,6 +34,7 @@ After deployment, you'll get a URL like:
 - `https://your-api.railway.app`
 - `https://your-api.onrender.com`
 - `https://your-api.azurewebsites.net`
+- `https://your-env.REGION.elasticbeanstalk.com` (AWS)
 
 #### Step 3: Configure Vercel Proxy
 

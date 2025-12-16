@@ -16,3 +16,12 @@ public class Fleet
     public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 }
 
+
+
+
+
+
+
+
+
+

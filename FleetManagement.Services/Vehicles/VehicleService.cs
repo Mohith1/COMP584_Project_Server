@@ -73,6 +73,10 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleDto> CreateVehicleAsync(CreateVehicleDto createDto)
     {
+        // Verify the fleet exists and get the fleet name
+        var fleet = await _context.Fleets
+            .FirstOrDefaultAsync(f => f.Id == createDto.FleetId && !f.IsDeleted);
+
         var vehicle = new Vehicle
         {
             Id = Guid.NewGuid(),
@@ -91,7 +95,22 @@ public class VehicleService : IVehicleService
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
-        return await GetVehicleByIdAsync(vehicle.Id) ?? throw new InvalidOperationException("Failed to retrieve created vehicle");
+        // Return the DTO directly instead of re-querying to avoid in-memory database issues with includes
+        return new VehicleDto
+        {
+            Id = vehicle.Id,
+            Vin = vehicle.Vin,
+            PlateNumber = vehicle.PlateNumber,
+            Make = vehicle.Make,
+            Model = vehicle.Model,
+            ModelYear = vehicle.ModelYear,
+            Status = vehicle.Status,
+            FleetId = vehicle.FleetId,
+            FleetName = fleet?.Name ?? "Unknown",
+            OwnerId = vehicle.OwnerId,
+            CreatedAtUtc = vehicle.CreatedAtUtc,
+            UpdatedAtUtc = vehicle.UpdatedAtUtc
+        };
     }
 
     public async Task<VehicleDto?> UpdateVehicleAsync(Guid id, UpdateVehicleDto updateDto)
@@ -172,4 +191,10 @@ public class VehicleService : IVehicleService
         });
     }
 }
+
+
+
+
+
+
 

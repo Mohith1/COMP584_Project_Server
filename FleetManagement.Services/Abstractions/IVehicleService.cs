@@ -13,3 +13,9 @@ public interface IVehicleService
     Task<IEnumerable<TelemetryDto>> GetLatestTelemetryAsync(IEnumerable<Guid> vehicleIds);
 }
 
+
+
+
+
+
+

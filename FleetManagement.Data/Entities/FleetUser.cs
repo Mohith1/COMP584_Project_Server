@@ -21,3 +21,12 @@ public class FleetUser
     public Vehicle? AssignedVehicle { get; set; }
 }
 
+
+
+
+
+
+
+
+
+

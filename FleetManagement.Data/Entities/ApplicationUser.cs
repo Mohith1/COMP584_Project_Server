@@ -8,3 +8,12 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTimeOffset? LastLoginUtc { get; set; }
 }
 
+
+
+
+
+
+
+
+
+

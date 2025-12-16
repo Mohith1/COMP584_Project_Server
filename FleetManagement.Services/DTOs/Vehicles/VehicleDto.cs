@@ -38,3 +38,9 @@ public class UpdateVehicleDto
     public int Status { get; set; }
 }
 
+
+
+
+
+
+

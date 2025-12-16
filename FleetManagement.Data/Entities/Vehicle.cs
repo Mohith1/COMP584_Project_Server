@@ -25,3 +25,12 @@ public class Vehicle
     public ICollection<FleetUser> AssignedFleetUsers { get; set; } = new List<FleetUser>();
 }
 
+
+
+
+
+
+
+
+
+

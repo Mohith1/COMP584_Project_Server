@@ -11,3 +11,9 @@ public interface ICityService
     Task<bool> DeleteCityAsync(Guid id);
 }
 
+
+
+
+
+
+

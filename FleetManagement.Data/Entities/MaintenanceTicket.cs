@@ -17,3 +17,12 @@ public class MaintenanceTicket
     public Vehicle Vehicle { get; set; } = null!;
 }
 
+
+
+
+
+
+
+
+
+

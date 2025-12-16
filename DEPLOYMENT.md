@@ -77,7 +77,31 @@ ASP.NET Core applications require a .NET runtime, which Vercel does not provide.
 
 ---
 
-### Option 4: Fly.io
+### Option 4: AWS Elastic Beanstalk ⭐ Great for Enterprise
+
+**Why AWS:**
+- Native .NET support
+- Enterprise-grade infrastructure
+- Integrated with AWS ecosystem
+- Free tier available (12 months)
+
+**Steps:**
+1. Install AWS Toolkit for Visual Studio
+2. Right-click project → Publish to AWS Elastic Beanstalk
+3. Follow wizard to deploy
+4. Or use AWS CLI: `eb init` and `eb deploy`
+
+**Cost:** Free tier (750 hours/month t2.micro for 12 months), then ~$15-30/month
+
+**See [AWS_DEPLOYMENT.md](./AWS_DEPLOYMENT.md) for complete AWS deployment guide** including:
+- Elastic Beanstalk (easiest)
+- App Runner (container-based)
+- ECS Fargate (serverless containers)
+- EC2 (full control)
+
+---
+
+### Option 5: Fly.io
 
 **Why Fly.io:**
 - Global edge deployment
@@ -124,6 +148,7 @@ Set these in your deployment platform:
 
 You'll need to set up a production database. Options:
 - **Azure SQL Database** (if using Azure)
+- **Amazon RDS** (SQL Server or PostgreSQL) - if using AWS
 - **PostgreSQL** (Railway, Render, Fly.io all support)
 - **SQL Server** (Azure, AWS RDS)
 - **SQLite** (not recommended for production)
