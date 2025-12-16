@@ -72,23 +72,14 @@ builder.Services.AddCors(options =>
     {
         policy.SetIsOriginAllowed(origin =>
             {
-                Console.WriteLine($"[CORS] Checking origin: {origin}");
-                
                 // Allow localhost for development
                 if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
-                {
-                    Console.WriteLine($"[CORS] Allowed localhost origin: {origin}");
                     return true;
-                }
                 
                 // Allow all Vercel deployments (both preview and production)
                 if (origin.EndsWith(".vercel.app") || origin.EndsWith(".vercel.app/"))
-                {
-                    Console.WriteLine($"[CORS] Allowed Vercel origin: {origin}");
                     return true;
-                }
                 
-                Console.WriteLine($"[CORS] REJECTED origin: {origin}");
                 return false;
             })
             .AllowAnyMethod()
@@ -107,12 +98,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Log configuration for debugging
-var actualPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-Console.WriteLine($"[Railway] PORT env var: {actualPort}");
-Console.WriteLine($"[Railway] Application binding to: http://0.0.0.0:{actualPort}");
-Console.WriteLine($"[Railway] Application starting...");
-
 // CRITICAL: CORS must be enabled FIRST before any endpoint mapping
 // This ensures preflight OPTIONS requests are handled correctly for all methods (POST, PUT, DELETE)
 app.UseCors("AllowVercelAndLocalhost");
@@ -123,8 +108,7 @@ app.MapGet("/health", () =>
 {
     return Results.Ok(new { 
         status = "healthy", 
-        timestamp = DateTime.UtcNow,
-        port = actualPort
+        timestamp = DateTime.UtcNow
     });
 })
     .WithName("HealthCheck")
