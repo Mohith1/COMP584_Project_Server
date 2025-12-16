@@ -128,8 +128,7 @@ app.MapGet("/health", () =>
     });
 })
     .WithName("HealthCheck")
-    .WithOpenApi()
-    .RequireCors("AllowVercelAndLocalhost");
+    .WithOpenApi();
 
 // Also add root endpoint for Railway healthcheck fallback
 app.MapGet("/", () => Results.Ok(new { 
@@ -139,8 +138,7 @@ app.MapGet("/", () => Results.Ok(new {
     swagger = "/swagger"
 }))
     .WithName("Root")
-    .WithOpenApi()
-    .RequireCors("AllowVercelAndLocalhost");
+    .WithOpenApi();
 
 // Enable Swagger in all environments (can be restricted to Development if needed)
 app.UseSwagger();
