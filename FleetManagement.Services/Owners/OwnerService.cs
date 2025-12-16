@@ -21,6 +21,7 @@ public class OwnerService : IOwnerService
             .Where(o => !o.IsDeleted)
             .Include(o => o.City)
             .ThenInclude(c => c.Country)
+            .Include(o => o.Fleets)
             .ToListAsync();
 
         return owners.Select(o => new OwnerDto
@@ -31,10 +32,10 @@ public class OwnerService : IOwnerService
             ContactPhone = o.ContactPhone,
             PrimaryContactName = o.PrimaryContactName,
             CityId = o.CityId,
-            CityName = o.City.Name,
-            CountryName = o.City.Country.Name,
+            CityName = o.City?.Name ?? "Unknown",
+            CountryName = o.City?.Country?.Name ?? "Unknown",
             TimeZone = o.TimeZone,
-            FleetCount = o.Fleets.Count(f => !f.IsDeleted),
+            FleetCount = o.Fleets?.Count(f => !f.IsDeleted) ?? 0,
             CreatedAtUtc = o.CreatedAtUtc,
             UpdatedAtUtc = o.UpdatedAtUtc
         });
@@ -58,10 +59,10 @@ public class OwnerService : IOwnerService
             ContactPhone = owner.ContactPhone,
             PrimaryContactName = owner.PrimaryContactName,
             CityId = owner.CityId,
-            CityName = owner.City.Name,
-            CountryName = owner.City.Country.Name,
+            CityName = owner.City?.Name ?? "Unknown",
+            CountryName = owner.City?.Country?.Name ?? "Unknown",
             TimeZone = owner.TimeZone,
-            FleetCount = owner.Fleets.Count(f => !f.IsDeleted),
+            FleetCount = owner.Fleets?.Count(f => !f.IsDeleted) ?? 0,
             CreatedAtUtc = owner.CreatedAtUtc,
             UpdatedAtUtc = owner.UpdatedAtUtc
         };
@@ -123,4 +124,9 @@ public class OwnerService : IOwnerService
         return true;
     }
 }
+
+
+
+
+
 
