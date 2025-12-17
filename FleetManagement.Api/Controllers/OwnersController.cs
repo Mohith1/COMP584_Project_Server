@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using FleetManagement.Api.Hubs;
 using FleetManagement.Services.Abstractions;
 using FleetManagement.Services.DTOs.Fleets;
 using FleetManagement.Services.DTOs.Owners;
 using FleetManagement.Services.DTOs.Vehicles;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FleetManagement.Api.Controllers;
 
@@ -15,15 +17,21 @@ public class OwnersController : ControllerBase
     private readonly IOwnerService _ownerService;
     private readonly IFleetService _fleetService;
     private readonly IVehicleService _vehicleService;
+    private readonly IHubContext<FleetHub> _fleetHub;
+    private readonly IHubContext<VehicleHub> _vehicleHub;
 
     public OwnersController(
         IOwnerService ownerService,
         IFleetService fleetService,
-        IVehicleService vehicleService)
+        IVehicleService vehicleService,
+        IHubContext<FleetHub> fleetHub,
+        IHubContext<VehicleHub> vehicleHub)
     {
         _ownerService = ownerService;
         _fleetService = fleetService;
         _vehicleService = vehicleService;
+        _fleetHub = fleetHub;
+        _vehicleHub = vehicleHub;
     }
 
     // ===================================
@@ -159,6 +167,12 @@ public class OwnersController : ControllerBase
         createDto.OwnerId = ownerId;
 
         var fleet = await _fleetService.CreateFleetAsync(createDto);
+        
+        // Broadcast to all clients subscribed to this owner
+        await _fleetHub.Clients
+            .Group($"owner-{ownerId}")
+            .SendAsync("FleetCreated", fleet);
+        
         return CreatedAtAction(nameof(GetOwnerFleets), new { ownerId = ownerId }, fleet);
     }
 

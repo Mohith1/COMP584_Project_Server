@@ -1,4 +1,5 @@
 using System.Text;
+using FleetManagement.Api.Hubs;
 using FleetManagement.Data;
 using FleetManagement.Services.Abstractions;
 using FleetManagement.Services.Cities;
@@ -6,6 +7,7 @@ using FleetManagement.Services.Fleets;
 using FleetManagement.Services.Owners;
 using FleetManagement.Services.Vehicles;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -140,6 +142,26 @@ builder.Services.AddAuthentication(options =>
         builder.Configuration["Auth0:Domain"] ?? "",
         builder.Configuration["Okta:Domain"] ?? ""
     }.Where(s => !string.IsNullOrEmpty(s)).ToArray();
+
+    // Configure JWT for SignalR WebSocket connections
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // SignalR sends token as query string parameter "access_token"
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            
+            if (!string.IsNullOrEmpty(accessToken) && 
+                (path.StartsWithSegments("/hub/fleets") || 
+                 path.StartsWithSegments("/hub/vehicles") || 
+                 path.StartsWithSegments("/hub/telemetry")))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // ===========================================
@@ -158,7 +180,15 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ===========================================
-// 6. REGISTER SERVICES (Dependency Injection)
+// 6. SIGNALR CONFIGURATION
+// ===========================================
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true; // Enable in development for debugging
+});
+
+// ===========================================
+// 7. REGISTER SERVICES (Dependency Injection)
 // ===========================================
 builder.Services.AddScoped<IOwnerService, OwnerService>();
 builder.Services.AddScoped<IFleetService, FleetService>();
@@ -167,7 +197,7 @@ builder.Services.AddScoped<ICityService, CityService>();
 builder.Services.AddScoped<ICountryService, CountryService>();
 
 // ===========================================
-// 7. CORS CONFIGURATION
+// 8. CORS CONFIGURATION
 // ===========================================
 builder.Services.AddCors(options =>
 {
@@ -202,7 +232,7 @@ var app = builder.Build();
 Console.WriteLine("[STARTUP] Application built successfully");
 
 // ===========================================
-// 8. MIDDLEWARE PIPELINE
+// 9. MIDDLEWARE PIPELINE
 // ===========================================
 
 app.UseCors("AllowFrontend");
@@ -218,7 +248,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // ===========================================
-// 9. HEALTH CHECK ENDPOINT
+// 10. HEALTH CHECK ENDPOINT
 // ===========================================
 app.MapGet("/health", () => Results.Ok(new 
 { 
@@ -240,12 +270,24 @@ app.MapGet("/", () => Results.Ok(new
 .WithOpenApi();
 
 // ===========================================
-// 10. MAP CONTROLLERS
+// 11. MAP SIGNALR HUBS
+// ===========================================
+app.MapHub<FleetHub>("/hub/fleets");
+app.MapHub<VehicleHub>("/hub/vehicles");
+app.MapHub<TelemetryHub>("/hub/telemetry");
+
+Console.WriteLine("[STARTUP] SignalR hubs mapped:");
+Console.WriteLine("  - /hub/fleets");
+Console.WriteLine("  - /hub/vehicles");
+Console.WriteLine("  - /hub/telemetry");
+
+// ===========================================
+// 12. MAP CONTROLLERS
 // ===========================================
 app.MapControllers();
 
 // ===========================================
-// 11. DATABASE MIGRATION (non-blocking)
+// 13. DATABASE MIGRATION (non-blocking)
 // ===========================================
 try
 {
