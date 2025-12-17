@@ -6,10 +6,13 @@ public interface IOwnerService
 {
     Task<IEnumerable<OwnerDto>> GetAllOwnersAsync();
     Task<OwnerDto?> GetOwnerByIdAsync(Guid id);
+    Task<OwnerDto?> GetOwnerByIdentityUserIdAsync(Guid identityUserId);
     Task<OwnerDto> CreateOwnerAsync(CreateOwnerDto createDto);
     Task<OwnerDto?> UpdateOwnerAsync(Guid id, UpdateOwnerDto updateDto);
     Task<bool> DeleteOwnerAsync(Guid id);
 }
+
+
 
 
 

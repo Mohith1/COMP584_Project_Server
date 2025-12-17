@@ -21,7 +21,6 @@ public class OwnerService : IOwnerService
             .Where(o => !o.IsDeleted)
             .Include(o => o.City)
             .ThenInclude(c => c.Country)
-            .Include(o => o.Fleets)
             .ToListAsync();
 
         return owners.Select(o => new OwnerDto
@@ -32,10 +31,10 @@ public class OwnerService : IOwnerService
             ContactPhone = o.ContactPhone,
             PrimaryContactName = o.PrimaryContactName,
             CityId = o.CityId,
-            CityName = o.City?.Name ?? "Unknown",
-            CountryName = o.City?.Country?.Name ?? "Unknown",
+            CityName = o.City.Name,
+            CountryName = o.City.Country.Name,
             TimeZone = o.TimeZone,
-            FleetCount = o.Fleets?.Count(f => !f.IsDeleted) ?? 0,
+            FleetCount = o.FleetCount,
             CreatedAtUtc = o.CreatedAtUtc,
             UpdatedAtUtc = o.UpdatedAtUtc
         });
@@ -46,7 +45,6 @@ public class OwnerService : IOwnerService
         var owner = await _context.Owners
             .Include(o => o.City)
             .ThenInclude(c => c.Country)
-            .Include(o => o.Fleets)
             .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (owner == null) return null;
@@ -59,10 +57,36 @@ public class OwnerService : IOwnerService
             ContactPhone = owner.ContactPhone,
             PrimaryContactName = owner.PrimaryContactName,
             CityId = owner.CityId,
-            CityName = owner.City?.Name ?? "Unknown",
-            CountryName = owner.City?.Country?.Name ?? "Unknown",
+            CityName = owner.City.Name,
+            CountryName = owner.City.Country.Name,
             TimeZone = owner.TimeZone,
-            FleetCount = owner.Fleets?.Count(f => !f.IsDeleted) ?? 0,
+            FleetCount = owner.FleetCount,
+            CreatedAtUtc = owner.CreatedAtUtc,
+            UpdatedAtUtc = owner.UpdatedAtUtc
+        };
+    }
+
+    public async Task<OwnerDto?> GetOwnerByIdentityUserIdAsync(Guid identityUserId)
+    {
+        var owner = await _context.Owners
+            .Include(o => o.City)
+            .ThenInclude(c => c.Country)
+            .FirstOrDefaultAsync(o => o.IdentityUserId == identityUserId && !o.IsDeleted);
+
+        if (owner == null) return null;
+
+        return new OwnerDto
+        {
+            Id = owner.Id,
+            CompanyName = owner.CompanyName,
+            ContactEmail = owner.ContactEmail,
+            ContactPhone = owner.ContactPhone,
+            PrimaryContactName = owner.PrimaryContactName,
+            CityId = owner.CityId,
+            CityName = owner.City.Name,
+            CountryName = owner.City.Country.Name,
+            TimeZone = owner.TimeZone,
+            FleetCount = owner.FleetCount,
             CreatedAtUtc = owner.CreatedAtUtc,
             UpdatedAtUtc = owner.UpdatedAtUtc
         };
@@ -70,11 +94,6 @@ public class OwnerService : IOwnerService
 
     public async Task<OwnerDto> CreateOwnerAsync(CreateOwnerDto createDto)
     {
-        // Verify the city exists
-        var city = await _context.Cities
-            .Include(c => c.Country)
-            .FirstOrDefaultAsync(c => c.Id == createDto.CityId && !c.IsDeleted);
-
         var owner = new Owner
         {
             Id = Guid.NewGuid(),
@@ -92,22 +111,7 @@ public class OwnerService : IOwnerService
         _context.Owners.Add(owner);
         await _context.SaveChangesAsync();
 
-        // Return the DTO directly instead of re-querying to avoid in-memory database issues with includes
-        return new OwnerDto
-        {
-            Id = owner.Id,
-            CompanyName = owner.CompanyName,
-            ContactEmail = owner.ContactEmail,
-            ContactPhone = owner.ContactPhone,
-            PrimaryContactName = owner.PrimaryContactName,
-            CityId = owner.CityId,
-            CityName = city?.Name ?? "Unknown",
-            CountryName = city?.Country?.Name ?? "Unknown",
-            TimeZone = owner.TimeZone,
-            FleetCount = 0,
-            CreatedAtUtc = owner.CreatedAtUtc,
-            UpdatedAtUtc = owner.UpdatedAtUtc
-        };
+        return await GetOwnerByIdAsync(owner.Id) ?? throw new InvalidOperationException("Failed to retrieve created owner");
     }
 
     public async Task<OwnerDto?> UpdateOwnerAsync(Guid id, UpdateOwnerDto updateDto)
@@ -144,9 +148,3 @@ public class OwnerService : IOwnerService
         return true;
     }
 }
-
-
-
-
-
-

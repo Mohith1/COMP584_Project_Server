@@ -22,6 +22,29 @@ public class OwnersController : ControllerBase
         return Ok(owners);
     }
 
+    [HttpGet("me")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<ActionResult<OwnerDto>> GetCurrentOwner()
+    {
+        // Get the current user's ID from the JWT claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("nameid")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return BadRequest(new { error = "Unable to identify the current user" });
+        }
+
+        var owner = await _ownerService.GetOwnerByIdentityUserIdAsync(userId);
+        if (owner == null)
+        {
+            return NotFound(new { error = "Owner record not found for the current user" });
+        }
+
+        return Ok(owner);
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<OwnerDto>> GetOwner(Guid id)
     {
@@ -62,6 +85,8 @@ public class OwnersController : ControllerBase
         return NoContent();
     }
 }
+
+
 
 
 
