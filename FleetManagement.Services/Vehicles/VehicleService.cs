@@ -39,7 +39,7 @@ public class VehicleService : IVehicleService
             ModelYear = v.ModelYear,
             Status = v.Status,
             FleetId = v.FleetId,
-            FleetName = v.Fleet.Name,
+            FleetName = v.Fleet?.Name,
             OwnerId = v.OwnerId,
             CreatedAtUtc = v.CreatedAtUtc,
             UpdatedAtUtc = v.UpdatedAtUtc
@@ -64,7 +64,7 @@ public class VehicleService : IVehicleService
             ModelYear = vehicle.ModelYear,
             Status = vehicle.Status,
             FleetId = vehicle.FleetId,
-            FleetName = vehicle.Fleet.Name,
+            FleetName = vehicle.Fleet?.Name,
             OwnerId = vehicle.OwnerId,
             CreatedAtUtc = vehicle.CreatedAtUtc,
             UpdatedAtUtc = vehicle.UpdatedAtUtc
@@ -73,10 +73,6 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleDto> CreateVehicleAsync(CreateVehicleDto createDto)
     {
-        // Verify the fleet exists and get the fleet name
-        var fleet = await _context.Fleets
-            .FirstOrDefaultAsync(f => f.Id == createDto.FleetId && !f.IsDeleted);
-
         var vehicle = new Vehicle
         {
             Id = Guid.NewGuid(),
@@ -95,22 +91,7 @@ public class VehicleService : IVehicleService
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
-        // Return the DTO directly instead of re-querying to avoid in-memory database issues with includes
-        return new VehicleDto
-        {
-            Id = vehicle.Id,
-            Vin = vehicle.Vin,
-            PlateNumber = vehicle.PlateNumber,
-            Make = vehicle.Make,
-            Model = vehicle.Model,
-            ModelYear = vehicle.ModelYear,
-            Status = vehicle.Status,
-            FleetId = vehicle.FleetId,
-            FleetName = fleet?.Name ?? "Unknown",
-            OwnerId = vehicle.OwnerId,
-            CreatedAtUtc = vehicle.CreatedAtUtc,
-            UpdatedAtUtc = vehicle.UpdatedAtUtc
-        };
+        return await GetVehicleByIdAsync(vehicle.Id) ?? throw new InvalidOperationException("Failed to retrieve created vehicle");
     }
 
     public async Task<VehicleDto?> UpdateVehicleAsync(Guid id, UpdateVehicleDto updateDto)
@@ -153,13 +134,14 @@ public class VehicleService : IVehicleService
             .Where(t => t.VehicleId == vehicleId && !t.IsDeleted)
             .Include(t => t.Vehicle)
             .OrderByDescending(t => t.CapturedAtUtc)
+            .Take(100) // Limit to last 100 records
             .ToListAsync();
 
         return telemetry.Select(t => new TelemetryDto
         {
             Id = t.Id,
             VehicleId = t.VehicleId,
-            VehicleVin = t.Vehicle.Vin,
+            VehicleVin = t.Vehicle?.Vin,
             Latitude = t.Latitude,
             Longitude = t.Longitude,
             SpeedKph = t.SpeedKph,
@@ -170,19 +152,21 @@ public class VehicleService : IVehicleService
 
     public async Task<IEnumerable<TelemetryDto>> GetLatestTelemetryAsync(IEnumerable<Guid> vehicleIds)
     {
-        var ids = vehicleIds.ToList();
-        var telemetry = await _context.VehicleTelemetrySnapshots
-            .Where(t => ids.Contains(t.VehicleId) && !t.IsDeleted)
+        var vehicleIdList = vehicleIds.ToList();
+
+        // Get latest telemetry for each vehicle
+        var latestTelemetry = await _context.VehicleTelemetrySnapshots
+            .Where(t => vehicleIdList.Contains(t.VehicleId) && !t.IsDeleted)
             .Include(t => t.Vehicle)
             .GroupBy(t => t.VehicleId)
             .Select(g => g.OrderByDescending(t => t.CapturedAtUtc).First())
             .ToListAsync();
 
-        return telemetry.Select(t => new TelemetryDto
+        return latestTelemetry.Select(t => new TelemetryDto
         {
             Id = t.Id,
             VehicleId = t.VehicleId,
-            VehicleVin = t.Vehicle.Vin,
+            VehicleVin = t.Vehicle?.Vin,
             Latitude = t.Latitude,
             Longitude = t.Longitude,
             SpeedKph = t.SpeedKph,
@@ -191,10 +175,3 @@ public class VehicleService : IVehicleService
         });
     }
 }
-
-
-
-
-
-
-

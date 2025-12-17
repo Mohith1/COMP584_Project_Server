@@ -1,5 +1,9 @@
+using System.Security.Claims;
 using FleetManagement.Services.Abstractions;
+using FleetManagement.Services.DTOs.Fleets;
 using FleetManagement.Services.DTOs.Owners;
+using FleetManagement.Services.DTOs.Vehicles;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FleetManagement.Api.Controllers;
@@ -9,13 +13,25 @@ namespace FleetManagement.Api.Controllers;
 public class OwnersController : ControllerBase
 {
     private readonly IOwnerService _ownerService;
+    private readonly IFleetService _fleetService;
+    private readonly IVehicleService _vehicleService;
 
-    public OwnersController(IOwnerService ownerService)
+    public OwnersController(
+        IOwnerService ownerService,
+        IFleetService fleetService,
+        IVehicleService vehicleService)
     {
         _ownerService = ownerService;
+        _fleetService = fleetService;
+        _vehicleService = vehicleService;
     }
 
+    // ===================================
+    // OWNER CRUD ENDPOINTS
+    // ===================================
+
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<OwnerDto>>> GetOwners()
     {
         var owners = await _ownerService.GetAllOwnersAsync();
@@ -23,20 +39,16 @@ public class OwnersController : ControllerBase
     }
 
     [HttpGet("me")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
+    [Authorize]
     public async Task<ActionResult<OwnerDto>> GetCurrentOwner()
     {
-        // Get the current user's ID from the JWT claims
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.FindFirst("nameid")?.Value;
-
-        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = GetCurrentUserId();
+        if (userId == null)
         {
             return BadRequest(new { error = "Unable to identify the current user" });
         }
 
-        var owner = await _ownerService.GetOwnerByIdentityUserIdAsync(userId);
+        var owner = await _ownerService.GetOwnerByIdentityUserIdAsync(userId.Value);
         if (owner == null)
         {
             return NotFound(new { error = "Owner record not found for the current user" });
@@ -45,7 +57,33 @@ public class OwnersController : ControllerBase
         return Ok(owner);
     }
 
+    [HttpPut("me")]
+    [Authorize]
+    public async Task<ActionResult<OwnerDto>> UpdateCurrentOwner(UpdateOwnerDto updateDto)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return BadRequest(new { error = "Unable to identify the current user" });
+        }
+
+        var currentOwner = await _ownerService.GetOwnerByIdentityUserIdAsync(userId.Value);
+        if (currentOwner == null)
+        {
+            return NotFound(new { error = "Owner record not found for the current user" });
+        }
+
+        var owner = await _ownerService.UpdateOwnerAsync(currentOwner.Id, updateDto);
+        if (owner == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(owner);
+    }
+
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<OwnerDto>> GetOwner(Guid id)
     {
         var owner = await _ownerService.GetOwnerByIdAsync(id);
@@ -64,6 +102,7 @@ public class OwnersController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<ActionResult<OwnerDto>> UpdateOwner(Guid id, UpdateOwnerDto updateDto)
     {
         var owner = await _ownerService.UpdateOwnerAsync(id, updateDto);
@@ -75,6 +114,7 @@ public class OwnersController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteOwner(Guid id)
     {
         var result = await _ownerService.DeleteOwnerAsync(id);
@@ -84,13 +124,117 @@ public class OwnersController : ControllerBase
         }
         return NoContent();
     }
+
+    // ===================================
+    // NESTED FLEET ROUTES: /api/owners/{ownerId}/fleets
+    // ===================================
+
+    [HttpGet("{ownerId}/fleets")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<FleetDto>>> GetOwnerFleets(Guid ownerId)
+    {
+        // Verify owner exists
+        var owner = await _ownerService.GetOwnerByIdAsync(ownerId);
+        if (owner == null)
+        {
+            return NotFound(new { error = "Owner not found" });
+        }
+
+        var fleets = await _fleetService.GetAllFleetsAsync(ownerId);
+        return Ok(fleets);
+    }
+
+    [HttpPost("{ownerId}/fleets")]
+    [Authorize]
+    public async Task<ActionResult<FleetDto>> CreateOwnerFleet(Guid ownerId, CreateFleetDto createDto)
+    {
+        // Verify owner exists
+        var owner = await _ownerService.GetOwnerByIdAsync(ownerId);
+        if (owner == null)
+        {
+            return NotFound(new { error = "Owner not found" });
+        }
+
+        // Ensure OwnerId matches the route
+        createDto.OwnerId = ownerId;
+
+        var fleet = await _fleetService.CreateFleetAsync(createDto);
+        return CreatedAtAction(nameof(GetOwnerFleets), new { ownerId = ownerId }, fleet);
+    }
+
+    // ===================================
+    // NESTED VEHICLE ROUTES: /api/owners/{ownerId}/vehicles
+    // ===================================
+
+    [HttpGet("{ownerId}/vehicles")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<VehicleDto>>> GetOwnerVehicles(Guid ownerId)
+    {
+        // Verify owner exists
+        var owner = await _ownerService.GetOwnerByIdAsync(ownerId);
+        if (owner == null)
+        {
+            return NotFound(new { error = "Owner not found" });
+        }
+
+        // Get all fleets for this owner, then get all vehicles
+        var fleets = await _fleetService.GetAllFleetsAsync(ownerId);
+        var allVehicles = new List<VehicleDto>();
+
+        foreach (var fleet in fleets)
+        {
+            var vehicles = await _vehicleService.GetAllVehiclesAsync(fleet.Id);
+            allVehicles.AddRange(vehicles);
+        }
+
+        return Ok(allVehicles);
+    }
+
+    [HttpGet("{ownerId}/vehicles/telemetry")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<TelemetryDto>>> GetOwnerVehiclesTelemetry(Guid ownerId)
+    {
+        // Verify owner exists
+        var owner = await _ownerService.GetOwnerByIdAsync(ownerId);
+        if (owner == null)
+        {
+            return NotFound(new { error = "Owner not found" });
+        }
+
+        // Get all fleets for this owner
+        var fleets = await _fleetService.GetAllFleetsAsync(ownerId);
+        var vehicleIds = new List<Guid>();
+
+        foreach (var fleet in fleets)
+        {
+            var vehicles = await _vehicleService.GetAllVehiclesAsync(fleet.Id);
+            vehicleIds.AddRange(vehicles.Select(v => v.Id));
+        }
+
+        if (vehicleIds.Count == 0)
+        {
+            return Ok(new List<TelemetryDto>());
+        }
+
+        var telemetry = await _vehicleService.GetLatestTelemetryAsync(vehicleIds);
+        return Ok(telemetry);
+    }
+
+    // ===================================
+    // HELPER METHODS
+    // ===================================
+
+    private Guid? GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("nameid")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return null;
+        }
+
+        return userId;
+    }
 }
-
-
-
-
-
-
-
-
-

@@ -20,6 +20,7 @@ public class FleetService : IFleetService
         var query = _context.Fleets
             .Where(f => !f.IsDeleted)
             .Include(f => f.Owner)
+            .Include(f => f.Vehicles.Where(v => !v.IsDeleted))
             .AsQueryable();
 
         if (ownerId.HasValue)
@@ -35,8 +36,8 @@ public class FleetService : IFleetService
             Name = f.Name,
             Description = f.Description,
             OwnerId = f.OwnerId,
-            OwnerName = f.Owner.CompanyName,
-            VehicleCount = f.Vehicles.Count(v => !v.IsDeleted),
+            OwnerName = f.Owner?.CompanyName,
+            VehicleCount = f.Vehicles.Count,
             CreatedAtUtc = f.CreatedAtUtc,
             UpdatedAtUtc = f.UpdatedAtUtc
         });
@@ -46,7 +47,7 @@ public class FleetService : IFleetService
     {
         var fleet = await _context.Fleets
             .Include(f => f.Owner)
-            .Include(f => f.Vehicles)
+            .Include(f => f.Vehicles.Where(v => !v.IsDeleted))
             .FirstOrDefaultAsync(f => f.Id == id && !f.IsDeleted);
 
         if (fleet == null) return null;
@@ -57,8 +58,8 @@ public class FleetService : IFleetService
             Name = fleet.Name,
             Description = fleet.Description,
             OwnerId = fleet.OwnerId,
-            OwnerName = fleet.Owner.CompanyName,
-            VehicleCount = fleet.Vehicles.Count(v => !v.IsDeleted),
+            OwnerName = fleet.Owner?.CompanyName,
+            VehicleCount = fleet.Vehicles.Count,
             CreatedAtUtc = fleet.CreatedAtUtc,
             UpdatedAtUtc = fleet.UpdatedAtUtc
         };
@@ -66,10 +67,6 @@ public class FleetService : IFleetService
 
     public async Task<FleetDto> CreateFleetAsync(CreateFleetDto createDto)
     {
-        // Verify the owner exists and get the company name
-        var owner = await _context.Owners
-            .FirstOrDefaultAsync(o => o.Id == createDto.OwnerId && !o.IsDeleted);
-
         var fleet = new Fleet
         {
             Id = Guid.NewGuid(),
@@ -81,20 +78,17 @@ public class FleetService : IFleetService
         };
 
         _context.Fleets.Add(fleet);
+
+        // Update owner's fleet count
+        var owner = await _context.Owners.FindAsync(createDto.OwnerId);
+        if (owner != null)
+        {
+            owner.FleetCount++;
+        }
+
         await _context.SaveChangesAsync();
 
-        // Return the DTO directly instead of re-querying to avoid in-memory database issues with includes
-        return new FleetDto
-        {
-            Id = fleet.Id,
-            Name = fleet.Name,
-            Description = fleet.Description,
-            OwnerId = fleet.OwnerId,
-            OwnerName = owner?.CompanyName ?? "Unknown",
-            VehicleCount = 0,
-            CreatedAtUtc = fleet.CreatedAtUtc,
-            UpdatedAtUtc = fleet.UpdatedAtUtc
-        };
+        return await GetFleetByIdAsync(fleet.Id) ?? throw new InvalidOperationException("Failed to retrieve created fleet");
     }
 
     public async Task<FleetDto?> UpdateFleetAsync(Guid id, UpdateFleetDto updateDto)
@@ -122,15 +116,16 @@ public class FleetService : IFleetService
 
         fleet.IsDeleted = true;
         fleet.DeletedAtUtc = DateTimeOffset.UtcNow;
+
+        // Update owner's fleet count
+        var owner = await _context.Owners.FindAsync(fleet.OwnerId);
+        if (owner != null && owner.FleetCount > 0)
+        {
+            owner.FleetCount--;
+        }
+
         await _context.SaveChangesAsync();
 
         return true;
     }
 }
-
-
-
-
-
-
-

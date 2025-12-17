@@ -1,5 +1,6 @@
 using FleetManagement.Services.Abstractions;
 using FleetManagement.Services.DTOs.Vehicles;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FleetManagement.Api.Controllers;
@@ -16,6 +17,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<VehicleDto>>> GetVehicles([FromQuery] Guid? fleetId)
     {
         var vehicles = await _vehicleService.GetAllVehiclesAsync(fleetId);
@@ -23,6 +25,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<VehicleDto>> GetVehicle(Guid id)
     {
         var vehicle = await _vehicleService.GetVehicleByIdAsync(id);
@@ -34,6 +37,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<VehicleDto>> CreateVehicle(CreateVehicleDto createDto)
     {
         var vehicle = await _vehicleService.CreateVehicleAsync(createDto);
@@ -41,6 +45,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<ActionResult<VehicleDto>> UpdateVehicle(Guid id, UpdateVehicleDto updateDto)
     {
         var vehicle = await _vehicleService.UpdateVehicleAsync(id, updateDto);
@@ -52,6 +57,7 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> DeleteVehicle(Guid id)
     {
         var result = await _vehicleService.DeleteVehicleAsync(id);
@@ -63,16 +69,10 @@ public class VehiclesController : ControllerBase
     }
 
     [HttpGet("{id}/telemetry")]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<TelemetryDto>>> GetVehicleTelemetry(Guid id)
     {
         var telemetry = await _vehicleService.GetVehicleTelemetryAsync(id);
         return Ok(telemetry);
     }
 }
-
-
-
-
-
-
-

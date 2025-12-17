@@ -1,145 +1,263 @@
-using Microsoft.EntityFrameworkCore;
+using System.Text;
 using FleetManagement.Data;
 using FleetManagement.Services.Abstractions;
-using FleetManagement.Services.Fleets;
-using FleetManagement.Services.Vehicles;
-using FleetManagement.Services.Owners;
 using FleetManagement.Services.Cities;
+using FleetManagement.Services.Fleets;
+using FleetManagement.Services.Owners;
+using FleetManagement.Services.Vehicles;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure port for Railway - Railway sets PORT env var
-// Must bind to 0.0.0.0 (all interfaces) not just localhost
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
-// Add services to the container.
+// ===========================================
+// 1. ADD CONTROLLERS
+// ===========================================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-// Configure Database
-var postgresConnection = builder.Configuration.GetConnectionString("PostgreSQL") 
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__PostgreSQL")
+// ===========================================
+// 2. SWAGGER WITH JWT SUPPORT
+// ===========================================
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Fleet Management API",
+        Version = "v1",
+        Description = "API for managing fleets, vehicles, and telemetry"
+    });
+
+    // Add JWT Authentication to Swagger
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter 'Bearer' followed by a space and your JWT token"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// ===========================================
+// 3. DATABASE CONFIGURATION
+// ===========================================
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? builder.Configuration["DATABASE_URL"]
     ?? Environment.GetEnvironmentVariable("DATABASE_URL");
 
-if (!string.IsNullOrEmpty(postgresConnection))
+if (!string.IsNullOrEmpty(connectionString))
 {
-    try
+    // Handle Railway/Supabase PostgreSQL connection strings
+    if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
     {
-        // Handle Railway's DATABASE_URL format if needed
-        if (postgresConnection.StartsWith("postgresql://"))
-        {
-            // Convert postgresql:// to standard connection string format
-            var uri = new Uri(postgresConnection);
-            var userInfo = uri.UserInfo.Split(':');
-            postgresConnection = $"Host={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;";
-        }
+        // Convert URI format to Npgsql format
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    }
 
-        builder.Services.AddDbContext<FleetDbContext>(options =>
-            options.UseNpgsql(postgresConnection));
-        
-        Console.WriteLine("[Database] PostgreSQL connection configured");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[Database] Error configuring PostgreSQL: {ex.Message}");
-        Console.WriteLine("[Database] Falling back to in-memory database");
-        builder.Services.AddDbContext<FleetDbContext>(options =>
-            options.UseInMemoryDatabase("FleetManagementDb"));
-    }
+    builder.Services.AddDbContext<FleetDbContext>(options =>
+        options.UseNpgsql(connectionString));
 }
 else
 {
-    // Fallback to in-memory database for development/testing
+    // Fallback to SQLite for local development
     builder.Services.AddDbContext<FleetDbContext>(options =>
-        options.UseInMemoryDatabase("FleetManagementDb"));
-    
-    Console.WriteLine("[Database] Using in-memory database (PostgreSQL not configured)");
+        options.UseSqlite("Data Source=FleetManagement.db"));
 }
 
-// Register services
+// ===========================================
+// 4. JWT AUTHENTICATION
+// ===========================================
+var jwtSecret = builder.Configuration["Jwt:Secret"] 
+    ?? Environment.GetEnvironmentVariable("JWT_SECRET") 
+    ?? "FleetManagement_SuperSecretKey_ChangeInProduction_AtLeast32Chars!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] 
+    ?? Environment.GetEnvironmentVariable("JWT_ISSUER") 
+    ?? "FleetManagementAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] 
+    ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+    ?? "FleetManagementClient";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    // For Auth0/Okta tokens, also accept tokens from those issuers
+    options.TokenValidationParameters.ValidIssuers = new[]
+    {
+        jwtIssuer,
+        builder.Configuration["Auth0:Domain"] ?? "",
+        builder.Configuration["Okta:Domain"] ?? ""
+    }.Where(s => !string.IsNullOrEmpty(s)).ToArray();
+});
+
+// ===========================================
+// 5. AUTHORIZATION POLICIES
+// ===========================================
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAuthenticatedUser", policy =>
+        policy.RequireAuthenticatedUser());
+    
+    options.AddPolicy("RequireOwner", policy =>
+        policy.RequireRole("Owner", "Admin"));
+    
+    options.AddPolicy("RequireAdmin", policy =>
+        policy.RequireRole("Admin"));
+});
+
+// ===========================================
+// 6. REGISTER SERVICES (Dependency Injection)
+// ===========================================
+builder.Services.AddScoped<IOwnerService, OwnerService>();
 builder.Services.AddScoped<IFleetService, FleetService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
-builder.Services.AddScoped<IOwnerService, OwnerService>();
 builder.Services.AddScoped<ICityService, CityService>();
 builder.Services.AddScoped<ICountryService, CountryService>();
 
-// Add CORS support for Vercel proxy and frontend applications
+// ===========================================
+// 7. CORS CONFIGURATION
+// ===========================================
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowVercelAndLocalhost", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
         policy.SetIsOriginAllowed(origin =>
-            {
-                // Allow localhost for development
-                if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
-                    return true;
-                
-                // Allow all Vercel deployments (both preview and production)
-                if (origin.EndsWith(".vercel.app") || origin.EndsWith(".vercel.app/"))
-                    return true;
-                
-                return false;
-            })
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-    
-    // Add a fallback permissive policy for development/debugging
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        {
+            // Allow localhost for development
+            if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
+                return true;
+            
+            // Allow all Vercel deployments
+            if (origin.EndsWith(".vercel.app"))
+                return true;
+            
+            // Allow all Railway deployments
+            if (origin.EndsWith(".railway.app"))
+                return true;
+
+            // Allow all Netlify deployments
+            if (origin.EndsWith(".netlify.app"))
+                return true;
+
+            return false;
+        })
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// CRITICAL: CORS must be enabled FIRST before any endpoint mapping
-// This ensures preflight OPTIONS requests are handled correctly for all methods (POST, PUT, DELETE)
-app.UseCors("AllowVercelAndLocalhost");
+// ===========================================
+// 8. MIDDLEWARE PIPELINE
+// ===========================================
 
-// Configure the HTTP request pipeline.
-// Health check endpoint for Railway
-app.MapGet("/health", () => 
-{
-    return Results.Ok(new { 
-        status = "healthy", 
-        timestamp = DateTime.UtcNow
-    });
-})
-    .WithName("HealthCheck")
-    .WithOpenApi();
+// Enable CORS (must be before other middleware)
+app.UseCors("AllowFrontend");
 
-// Also add root endpoint for Railway healthcheck fallback
-app.MapGet("/", () => Results.Ok(new { 
-    status = "ok", 
-    message = "Fleet Management API is running",
-    health = "/health",
-    swagger = "/swagger"
-}))
-    .WithName("Root")
-    .WithOpenApi();
-
-// Enable Swagger in all environments (can be restricted to Development if needed)
+// Enable Swagger (all environments for API documentation)
 app.UseSwagger();
-app.UseSwaggerUI(c =>
+app.UseSwaggerUI(options =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Fleet Management API v1");
-    c.RoutePrefix = "swagger";
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Fleet Management API v1");
+    options.RoutePrefix = "swagger";
 });
 
-// HTTPS redirection - skip in containerized environments where reverse proxy handles HTTPS
-// Uncomment the line below if you need HTTPS redirection in production
-// app.UseHttpsRedirection();
+// HTTPS redirection (skip in development if needed)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
-// Add routing middleware
-app.UseRouting();
+// Authentication & Authorization
+app.UseAuthentication();
+app.UseAuthorization();
 
-// Map controllers with CORS support
+// ===========================================
+// 9. HEALTH CHECK ENDPOINT
+// ===========================================
+app.MapGet("/health", () => Results.Ok(new 
+{ 
+    status = "healthy", 
+    timestamp = DateTime.UtcNow,
+    version = "1.0.0"
+}))
+.WithName("HealthCheck")
+.WithOpenApi();
+
+// Root endpoint
+app.MapGet("/", () => Results.Ok(new
+{
+    name = "Fleet Management API",
+    version = "1.0.0",
+    documentation = "/swagger",
+    health = "/health"
+}))
+.WithName("Root")
+.WithOpenApi();
+
+// ===========================================
+// 10. MAP CONTROLLERS
+// ===========================================
 app.MapControllers();
+
+// ===========================================
+// 11. AUTO-MIGRATE DATABASE (optional)
+// ===========================================
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<FleetDbContext>();
+        // Only migrate if using a real database
+        if (!context.Database.IsInMemory())
+        {
+            context.Database.Migrate();
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Database migration skipped or failed. This may be expected in some environments.");
+    }
+}
 
 app.Run();

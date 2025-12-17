@@ -1,5 +1,6 @@
 using FleetManagement.Services.Abstractions;
 using FleetManagement.Services.DTOs.Cities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FleetManagement.Api.Controllers;
@@ -34,6 +35,7 @@ public class CitiesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CityDto>> CreateCity(CreateCityDto createDto)
     {
         var city = await _cityService.CreateCityAsync(createDto);
@@ -41,6 +43,7 @@ public class CitiesController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CityDto>> UpdateCity(Guid id, UpdateCityDto updateDto)
     {
         var city = await _cityService.UpdateCityAsync(id, updateDto);
@@ -52,6 +55,7 @@ public class CitiesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteCity(Guid id)
     {
         var result = await _cityService.DeleteCityAsync(id);
@@ -62,10 +66,3 @@ public class CitiesController : ControllerBase
         return NoContent();
     }
 }
-
-
-
-
-
-
-

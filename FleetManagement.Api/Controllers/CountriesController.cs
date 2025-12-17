@@ -1,5 +1,6 @@
 using FleetManagement.Services.Abstractions;
 using FleetManagement.Services.DTOs.Cities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FleetManagement.Api.Controllers;
@@ -34,6 +35,7 @@ public class CountriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CountryDto>> CreateCountry(CreateCountryDto createDto)
     {
         var country = await _countryService.CreateCountryAsync(createDto);
@@ -41,6 +43,7 @@ public class CountriesController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CountryDto>> UpdateCountry(Guid id, UpdateCountryDto updateDto)
     {
         var country = await _countryService.UpdateCountryAsync(id, updateDto);
@@ -52,6 +55,7 @@ public class CountriesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteCountry(Guid id)
     {
         var result = await _countryService.DeleteCountryAsync(id);
@@ -62,10 +66,3 @@ public class CountriesController : ControllerBase
         return NoContent();
     }
 }
-
-
-
-
-
-
-

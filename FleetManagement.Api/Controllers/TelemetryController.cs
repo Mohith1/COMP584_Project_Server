@@ -1,5 +1,6 @@
 using FleetManagement.Services.Abstractions;
 using FleetManagement.Services.DTOs.Vehicles;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FleetManagement.Api.Controllers;
@@ -16,11 +17,12 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<TelemetryDto>>> GetTelemetry([FromQuery] string? vehicleIds)
     {
         if (string.IsNullOrWhiteSpace(vehicleIds))
         {
-            return BadRequest("vehicleIds query parameter is required");
+            return BadRequest(new { error = "vehicleIds query parameter is required" });
         }
 
         var ids = vehicleIds.Split(',')
@@ -31,7 +33,7 @@ public class TelemetryController : ControllerBase
 
         if (ids.Count == 0)
         {
-            return BadRequest("Invalid vehicleIds format");
+            return BadRequest(new { error = "Invalid vehicleIds format" });
         }
 
         var telemetry = await _vehicleService.GetLatestTelemetryAsync(ids);
@@ -39,6 +41,7 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpGet("{vehicleId}/latest")]
+    [Authorize]
     public async Task<ActionResult<TelemetryDto>> GetLatestTelemetry(Guid vehicleId)
     {
         var telemetry = await _vehicleService.GetVehicleTelemetryAsync(vehicleId);
@@ -52,10 +55,3 @@ public class TelemetryController : ControllerBase
         return Ok(latest);
     }
 }
-
-
-
-
-
-
-
