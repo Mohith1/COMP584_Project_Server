@@ -13,6 +13,14 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // ===========================================
+// 0. CONFIGURE PORT FOR RAILWAY
+// ===========================================
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+Console.WriteLine($"[STARTUP] Configuring server to listen on port {port}");
+
+// ===========================================
 // 1. ADD CONTROLLERS
 // ===========================================
 builder.Services.AddControllers();
@@ -30,7 +38,6 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API for managing fleets, vehicles, and telemetry"
     });
 
-    // Add JWT Authentication to Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -64,15 +71,25 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? builder.Configuration["DATABASE_URL"]
     ?? Environment.GetEnvironmentVariable("DATABASE_URL");
 
+Console.WriteLine($"[STARTUP] Database connection string found: {!string.IsNullOrEmpty(connectionString)}");
+
 if (!string.IsNullOrEmpty(connectionString))
 {
     // Handle Railway/Supabase PostgreSQL connection strings
     if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
     {
-        // Convert URI format to Npgsql format
-        var uri = new Uri(connectionString);
-        var userInfo = uri.UserInfo.Split(':');
-        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        try
+        {
+            var uri = new Uri(connectionString);
+            var userInfo = uri.UserInfo.Split(':');
+            var database = uri.AbsolutePath.TrimStart('/');
+            connectionString = $"Host={uri.Host};Port={uri.Port};Database={database};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI to connection string. Host: {uri.Host}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[STARTUP] Error parsing DATABASE_URL: {ex.Message}");
+        }
     }
 
     builder.Services.AddDbContext<FleetDbContext>(options =>
@@ -80,9 +97,9 @@ if (!string.IsNullOrEmpty(connectionString))
 }
 else
 {
-    // Fallback to SQLite for local development
+    Console.WriteLine("[STARTUP] No DATABASE_URL found, using in-memory database");
     builder.Services.AddDbContext<FleetDbContext>(options =>
-        options.UseSqlite("Data Source=FleetManagement.db"));
+        options.UseInMemoryDatabase("FleetManagementDb"));
 }
 
 // ===========================================
@@ -117,7 +134,6 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // For Auth0/Okta tokens, also accept tokens from those issuers
     options.TokenValidationParameters.ValidIssuers = new[]
     {
         jwtIssuer,
@@ -159,19 +175,17 @@ builder.Services.AddCors(options =>
     {
         policy.SetIsOriginAllowed(origin =>
         {
-            // Allow localhost for development
+            if (string.IsNullOrEmpty(origin)) return false;
+            
             if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
                 return true;
             
-            // Allow all Vercel deployments
             if (origin.EndsWith(".vercel.app"))
                 return true;
             
-            // Allow all Railway deployments
             if (origin.EndsWith(".railway.app"))
                 return true;
 
-            // Allow all Netlify deployments
             if (origin.EndsWith(".netlify.app"))
                 return true;
 
@@ -185,14 +199,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+Console.WriteLine("[STARTUP] Application built successfully");
+
 // ===========================================
 // 8. MIDDLEWARE PIPELINE
 // ===========================================
 
-// Enable CORS (must be before other middleware)
 app.UseCors("AllowFrontend");
 
-// Enable Swagger (all environments for API documentation)
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -200,13 +214,6 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
 });
 
-// HTTPS redirection (skip in development if needed)
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
-
-// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -222,7 +229,6 @@ app.MapGet("/health", () => Results.Ok(new
 .WithName("HealthCheck")
 .WithOpenApi();
 
-// Root endpoint
 app.MapGet("/", () => Results.Ok(new
 {
     name = "Fleet Management API",
@@ -239,25 +245,32 @@ app.MapGet("/", () => Results.Ok(new
 app.MapControllers();
 
 // ===========================================
-// 11. AUTO-MIGRATE DATABASE (optional)
+// 11. DATABASE MIGRATION (non-blocking)
 // ===========================================
-using (var scope = app.Services.CreateScope())
+try
 {
-    var services = scope.ServiceProvider;
-    try
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<FleetDbContext>();
+    
+    if (context.Database.IsNpgsql())
     {
-        var context = services.GetRequiredService<FleetDbContext>();
-        // Only migrate if using a real database
-        if (!context.Database.IsInMemory())
-        {
-            context.Database.Migrate();
-        }
+        Console.WriteLine("[STARTUP] Running database migrations...");
+        await context.Database.MigrateAsync();
+        Console.WriteLine("[STARTUP] Database migrations completed");
     }
-    catch (Exception ex)
+    else
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning(ex, "Database migration skipped or failed. This may be expected in some environments.");
+        Console.WriteLine("[STARTUP] Using in-memory database, ensuring created...");
+        await context.Database.EnsureCreatedAsync();
+        Console.WriteLine("[STARTUP] In-memory database ready");
     }
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"[STARTUP] Database setup warning: {ex.Message}");
+    // Don't crash - the app can still serve health checks and some endpoints
+}
+
+Console.WriteLine($"[STARTUP] Server starting on http://0.0.0.0:{port}");
 
 app.Run();
