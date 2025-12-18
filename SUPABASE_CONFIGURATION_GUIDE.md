@@ -395,3 +395,4 @@ Your database is now ready to use with Supabase! 🎉
 
 
 
+
