@@ -117,6 +117,14 @@ var jwtAudience = builder.Configuration["Jwt:Audience"]
     ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
     ?? "FleetManagementClient";
 
+// Auth0 Configuration
+var auth0Domain = builder.Configuration["Auth0:Domain"] 
+    ?? Environment.GetEnvironmentVariable("AUTH0_DOMAIN") 
+    ?? "";
+var auth0Audience = builder.Configuration["Auth0:Audience"] 
+    ?? Environment.GetEnvironmentVariable("AUTH0_AUDIENCE") 
+    ?? "https://fleetmanagement-api-production.up.railway.app";
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -124,24 +132,55 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // Configure for both custom JWT and Auth0 tokens
+    var validIssuers = new List<string> { jwtIssuer };
+    var validAudiences = new List<string> { jwtAudience };
+    
+    // Add Auth0 issuer if configured
+    if (!string.IsNullOrEmpty(auth0Domain))
+    {
+        // Auth0 issuer format: https://{domain}/
+        var auth0Issuer = auth0Domain.StartsWith("http") ? auth0Domain : $"https://{auth0Domain}/";
+        validIssuers.Add(auth0Issuer);
+        validAudiences.Add(auth0Audience);
+    }
+    
+    // Add Okta issuer if configured
+    var oktaDomain = builder.Configuration["Okta:Domain"] ?? "";
+    if (!string.IsNullOrEmpty(oktaDomain))
+    {
+        validIssuers.Add(oktaDomain);
+    }
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
+        ValidIssuers = validIssuers.ToArray(),
+        ValidAudiences = validAudiences.ToArray(),
+        // For custom JWT tokens (owner authentication)
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
         ClockSkew = TimeSpan.Zero
     };
 
-    options.TokenValidationParameters.ValidIssuers = new[]
+    // Configure Auth0 token validation (if Auth0 is configured)
+    if (!string.IsNullOrEmpty(auth0Domain))
     {
-        jwtIssuer,
-        builder.Configuration["Auth0:Domain"] ?? "",
-        builder.Configuration["Okta:Domain"] ?? ""
-    }.Where(s => !string.IsNullOrEmpty(s)).ToArray();
+        // Auth0 uses JWKS (JSON Web Key Set) for token validation
+        // The issuer is https://{domain}/
+        var auth0Issuer = auth0Domain.StartsWith("http") ? auth0Domain : $"https://{auth0Domain}/";
+        
+        // Set Authority for Auth0 JWKS validation
+        // This allows the middleware to fetch signing keys from Auth0's JWKS endpoint
+        options.Authority = auth0Issuer;
+        options.Audience = auth0Audience;
+        
+        // Note: When Authority is set, Auth0 tokens are validated using JWKS automatically
+        // Custom JWT tokens (with our symmetric key) are still validated via TokenValidationParameters
+        // The middleware will try both validation methods based on the token's issuer
+    }
 
     // Configure JWT for SignalR WebSocket connections
     options.Events = new JwtBearerEvents
