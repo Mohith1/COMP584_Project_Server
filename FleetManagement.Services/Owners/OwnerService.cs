@@ -20,80 +20,60 @@ public class OwnerService : IOwnerService
         var owners = await _context.Owners
             .Where(o => !o.IsDeleted)
             .Include(o => o.City)
-            .ThenInclude(c => c.Country)
+            .ThenInclude(c => c!.Country)
             .ToListAsync();
 
-        return owners.Select(o => new OwnerDto
-        {
-            Id = o.Id,
-            CompanyName = o.CompanyName,
-            ContactEmail = o.ContactEmail,
-            ContactPhone = o.ContactPhone,
-            PrimaryContactName = o.PrimaryContactName,
-            CityId = o.CityId,
-            CityName = o.City.Name,
-            CountryName = o.City.Country.Name,
-            TimeZone = o.TimeZone,
-            FleetCount = o.FleetCount,
-            CreatedAtUtc = o.CreatedAtUtc,
-            UpdatedAtUtc = o.UpdatedAtUtc
-        });
+        return owners.Select(MapToDto);
     }
 
     public async Task<OwnerDto?> GetOwnerByIdAsync(Guid id)
     {
         var owner = await _context.Owners
             .Include(o => o.City)
-            .ThenInclude(c => c.Country)
+            .ThenInclude(c => c!.Country)
             .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
-        if (owner == null) return null;
-
-        return new OwnerDto
-        {
-            Id = owner.Id,
-            CompanyName = owner.CompanyName,
-            ContactEmail = owner.ContactEmail,
-            ContactPhone = owner.ContactPhone,
-            PrimaryContactName = owner.PrimaryContactName,
-            CityId = owner.CityId,
-            CityName = owner.City.Name,
-            CountryName = owner.City.Country.Name,
-            TimeZone = owner.TimeZone,
-            FleetCount = owner.FleetCount,
-            CreatedAtUtc = owner.CreatedAtUtc,
-            UpdatedAtUtc = owner.UpdatedAtUtc
-        };
+        return owner == null ? null : MapToDto(owner);
     }
 
     public async Task<OwnerDto?> GetOwnerByIdentityUserIdAsync(Guid identityUserId)
     {
         var owner = await _context.Owners
             .Include(o => o.City)
-            .ThenInclude(c => c.Country)
+            .ThenInclude(c => c!.Country)
             .FirstOrDefaultAsync(o => o.IdentityUserId == identityUserId && !o.IsDeleted);
 
-        if (owner == null) return null;
+        return owner == null ? null : MapToDto(owner);
+    }
 
-        return new OwnerDto
-        {
-            Id = owner.Id,
-            CompanyName = owner.CompanyName,
-            ContactEmail = owner.ContactEmail,
-            ContactPhone = owner.ContactPhone,
-            PrimaryContactName = owner.PrimaryContactName,
-            CityId = owner.CityId,
-            CityName = owner.City.Name,
-            CountryName = owner.City.Country.Name,
-            TimeZone = owner.TimeZone,
-            FleetCount = owner.FleetCount,
-            CreatedAtUtc = owner.CreatedAtUtc,
-            UpdatedAtUtc = owner.UpdatedAtUtc
-        };
+    /// <summary>
+    /// Get owner by Auth0 user ID (string like "auth0|123456789")
+    /// </summary>
+    public async Task<OwnerDto?> GetOwnerByAuth0UserIdAsync(string auth0UserId)
+    {
+        if (string.IsNullOrWhiteSpace(auth0UserId))
+            return null;
+
+        var owner = await _context.Owners
+            .Include(o => o.City)
+            .ThenInclude(c => c!.Country)
+            .FirstOrDefaultAsync(o => o.Auth0UserId == auth0UserId && !o.IsDeleted);
+
+        return owner == null ? null : MapToDto(owner);
     }
 
     public async Task<OwnerDto> CreateOwnerAsync(CreateOwnerDto createDto)
     {
+        // Validate CityId only if provided
+        if (createDto.CityId.HasValue)
+        {
+            var cityExists = await _context.Cities.AnyAsync(c => c.Id == createDto.CityId.Value);
+            if (!cityExists)
+            {
+                throw new ArgumentException($"City with ID {createDto.CityId} does not exist");
+            }
+        }
+
         var owner = new Owner
         {
             Id = Guid.NewGuid(),
@@ -101,8 +81,9 @@ public class OwnerService : IOwnerService
             ContactEmail = createDto.ContactEmail,
             ContactPhone = createDto.ContactPhone,
             PrimaryContactName = createDto.PrimaryContactName,
-            CityId = createDto.CityId,
+            CityId = createDto.CityId,  // Now nullable - can be null
             TimeZone = createDto.TimeZone,
+            Auth0UserId = createDto.Auth0UserId,  // Link Auth0 account
             FleetCount = 0,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             IsDeleted = false
@@ -121,11 +102,21 @@ public class OwnerService : IOwnerService
 
         if (owner == null) return null;
 
+        // Validate CityId only if provided
+        if (updateDto.CityId.HasValue)
+        {
+            var cityExists = await _context.Cities.AnyAsync(c => c.Id == updateDto.CityId.Value);
+            if (!cityExists)
+            {
+                throw new ArgumentException($"City with ID {updateDto.CityId} does not exist");
+            }
+        }
+
         owner.CompanyName = updateDto.CompanyName;
         owner.ContactEmail = updateDto.ContactEmail;
         owner.ContactPhone = updateDto.ContactPhone;
         owner.PrimaryContactName = updateDto.PrimaryContactName;
-        owner.CityId = updateDto.CityId;
+        owner.CityId = updateDto.CityId;  // Now nullable - can be null
         owner.TimeZone = updateDto.TimeZone;
         owner.UpdatedAtUtc = DateTimeOffset.UtcNow;
 
@@ -146,5 +137,28 @@ public class OwnerService : IOwnerService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    /// <summary>
+    /// Maps Owner entity to OwnerDto, handling nullable City
+    /// </summary>
+    private static OwnerDto MapToDto(Owner owner)
+    {
+        return new OwnerDto
+        {
+            Id = owner.Id,
+            CompanyName = owner.CompanyName,
+            ContactEmail = owner.ContactEmail,
+            ContactPhone = owner.ContactPhone,
+            PrimaryContactName = owner.PrimaryContactName,
+            CityId = owner.CityId,
+            CityName = owner.City?.Name,  // Handle nullable
+            CountryName = owner.City?.Country?.Name,  // Handle nullable
+            TimeZone = owner.TimeZone,
+            FleetCount = owner.FleetCount,
+            Auth0UserId = owner.Auth0UserId,
+            CreatedAtUtc = owner.CreatedAtUtc,
+            UpdatedAtUtc = owner.UpdatedAtUtc
+        };
     }
 }

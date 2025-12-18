@@ -50,16 +50,38 @@ public class OwnersController : ControllerBase
     [Authorize]
     public async Task<ActionResult<OwnerDto>> GetCurrentOwner()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
+        // Try to get user ID - handles both GUID (internal) and string (Auth0) formats
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("nameid")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim))
         {
-            return BadRequest(new { error = "Unable to identify the current user" });
+            return Unauthorized(new { error = "Unable to identify the current user from token" });
         }
 
-        var owner = await _ownerService.GetOwnerByIdentityUserIdAsync(userId.Value);
+        OwnerDto? owner = null;
+
+        // Try Auth0 string ID first (format like "auth0|123456789")
+        if (userIdClaim.Contains('|') || !Guid.TryParse(userIdClaim, out _))
+        {
+            owner = await _ownerService.GetOwnerByAuth0UserIdAsync(userIdClaim);
+        }
+        
+        // Fallback to internal GUID-based IdentityUserId
+        if (owner == null && Guid.TryParse(userIdClaim, out var guidUserId))
+        {
+            owner = await _ownerService.GetOwnerByIdentityUserIdAsync(guidUserId);
+        }
+
         if (owner == null)
         {
-            return NotFound(new { error = "Owner record not found for the current user" });
+            // Return 404 with clear message - owner needs to complete registration
+            return NotFound(new { 
+                error = "Owner profile not found", 
+                message = "Please complete registration to create your owner profile.",
+                auth0UserId = userIdClaim 
+            });
         }
 
         return Ok(owner);
@@ -69,25 +91,50 @@ public class OwnersController : ControllerBase
     [Authorize]
     public async Task<ActionResult<OwnerDto>> UpdateCurrentOwner(UpdateOwnerDto updateDto)
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("nameid")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim))
         {
-            return BadRequest(new { error = "Unable to identify the current user" });
+            return Unauthorized(new { error = "Unable to identify the current user from token" });
         }
 
-        var currentOwner = await _ownerService.GetOwnerByIdentityUserIdAsync(userId.Value);
+        OwnerDto? currentOwner = null;
+
+        // Try Auth0 string ID first
+        if (userIdClaim.Contains('|') || !Guid.TryParse(userIdClaim, out _))
+        {
+            currentOwner = await _ownerService.GetOwnerByAuth0UserIdAsync(userIdClaim);
+        }
+        
+        // Fallback to internal GUID
+        if (currentOwner == null && Guid.TryParse(userIdClaim, out var guidUserId))
+        {
+            currentOwner = await _ownerService.GetOwnerByIdentityUserIdAsync(guidUserId);
+        }
+
         if (currentOwner == null)
         {
-            return NotFound(new { error = "Owner record not found for the current user" });
+            return NotFound(new { 
+                error = "Owner profile not found", 
+                message = "Please complete registration first." 
+            });
         }
 
-        var owner = await _ownerService.UpdateOwnerAsync(currentOwner.Id, updateDto);
-        if (owner == null)
+        try
         {
-            return NotFound();
+            var owner = await _ownerService.UpdateOwnerAsync(currentOwner.Id, updateDto);
+            if (owner == null)
+            {
+                return NotFound();
+            }
+            return Ok(owner);
         }
-
-        return Ok(owner);
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]
@@ -105,8 +152,27 @@ public class OwnersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<OwnerDto>> CreateOwner(CreateOwnerDto createDto)
     {
-        var owner = await _ownerService.CreateOwnerAsync(createDto);
-        return CreatedAtAction(nameof(GetOwner), new { id = owner.Id }, owner);
+        // If user is authenticated, automatically link the Auth0 ID
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("nameid")?.Value;
+
+        // If authenticated and no Auth0UserId provided, use the claim
+        if (!string.IsNullOrEmpty(userIdClaim) && string.IsNullOrEmpty(createDto.Auth0UserId))
+        {
+            createDto.Auth0UserId = userIdClaim;
+        }
+
+        try
+        {
+            var owner = await _ownerService.CreateOwnerAsync(createDto);
+            return CreatedAtAction(nameof(GetOwner), new { id = owner.Id }, owner);
+        }
+        catch (ArgumentException ex)
+        {
+            // Validation error (e.g., invalid CityId)
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
@@ -234,21 +300,4 @@ public class OwnersController : ControllerBase
         return Ok(telemetry);
     }
 
-    // ===================================
-    // HELPER METHODS
-    // ===================================
-
-    private Guid? GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.FindFirst("nameid")?.Value;
-
-        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
-            return null;
-        }
-
-        return userId;
-    }
 }
