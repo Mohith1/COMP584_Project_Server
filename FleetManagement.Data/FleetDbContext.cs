@@ -33,12 +33,68 @@ public class FleetDbContext : IdentityDbContext<ApplicationUser, ApplicationRole
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configure table names for Identity
+        // =====================================================
+        // IMPORTANT: PostgreSQL is case-sensitive!
+        // Table names must match exactly what's in Supabase
+        // Using quoted PascalCase names to match Supabase schema
+        // =====================================================
+
+        // Identity tables
         modelBuilder.Entity<ApplicationUser>().ToTable("AppUsers");
         modelBuilder.Entity<ApplicationRole>().ToTable("AppRoles");
 
-        // Apply entity configurations from Configurations folder if they exist
-        // This will be handled by applying configurations automatically
+        // Custom entities - explicit table mapping for PostgreSQL
+        modelBuilder.Entity<Country>().ToTable("Countries");
+        modelBuilder.Entity<City>().ToTable("Cities");
+        modelBuilder.Entity<Owner>().ToTable("Owners");
+        modelBuilder.Entity<Fleet>().ToTable("Fleets");
+        modelBuilder.Entity<Vehicle>().ToTable("Vehicles");
+        modelBuilder.Entity<FleetUser>().ToTable("FleetUsers");
+        modelBuilder.Entity<MaintenanceTicket>().ToTable("MaintenanceTickets");
+        modelBuilder.Entity<TelematicsDevice>().ToTable("TelematicsDevices");
+        modelBuilder.Entity<VehicleTelemetrySnapshot>().ToTable("VehicleTelemetrySnapshots");
+        modelBuilder.Entity<RefreshToken>().ToTable("RefreshTokens");
+
+        // Configure Owner entity
+        modelBuilder.Entity<Owner>(entity =>
+        {
+            entity.Property(e => e.CityId).IsRequired(false);  // CityId is nullable
+            entity.Property(e => e.Auth0UserId).HasMaxLength(255);
+            
+            entity.HasOne(e => e.City)
+                .WithMany()
+                .HasForeignKey(e => e.CityId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure City -> Country relationship
+        modelBuilder.Entity<City>(entity =>
+        {
+            entity.HasOne(e => e.Country)
+                .WithMany(c => c.Cities)
+                .HasForeignKey(e => e.CountryId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Fleet -> Owner relationship
+        modelBuilder.Entity<Fleet>(entity =>
+        {
+            entity.HasOne(e => e.Owner)
+                .WithMany(o => o.Fleets)
+                .HasForeignKey(e => e.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Vehicle -> Fleet relationship
+        modelBuilder.Entity<Vehicle>(entity =>
+        {
+            entity.HasOne(e => e.Fleet)
+                .WithMany(f => f.Vehicles)
+                .HasForeignKey(e => e.FleetId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Apply any additional configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FleetDbContext).Assembly);
     }
 }
