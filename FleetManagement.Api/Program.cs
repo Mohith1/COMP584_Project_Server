@@ -83,10 +83,24 @@ if (!string.IsNullOrEmpty(connectionString))
         try
         {
             var uri = new Uri(connectionString);
-            var userInfo = uri.UserInfo.Split(':');
+            var userInfo = uri.UserInfo;
+            
+            // Split on LAST colon to handle passwords that might contain colons
+            var colonIndex = userInfo.IndexOf(':');
+            var username = colonIndex > 0 ? userInfo.Substring(0, colonIndex) : userInfo;
+            var password = colonIndex > 0 ? userInfo.Substring(colonIndex + 1) : "";
+            
+            // URL-decode username and password (handles %40 -> @, etc.)
+            username = Uri.UnescapeDataString(username);
+            password = Uri.UnescapeDataString(password);
+            
             var database = uri.AbsolutePath.TrimStart('/');
-            connectionString = $"Host={uri.Host};Port={uri.Port};Database={database};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI to connection string. Host: {uri.Host}");
+            if (string.IsNullOrEmpty(database)) database = "postgres";
+            
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            
+            connectionString = $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {uri.Host}, Port: {port}, User: {username}");
         }
         catch (Exception ex)
         {
