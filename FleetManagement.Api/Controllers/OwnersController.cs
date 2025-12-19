@@ -152,6 +152,12 @@ public class OwnersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<OwnerDto>> CreateOwner(CreateOwnerDto createDto)
     {
+        // Validate model state first
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new { error = "Invalid request data", errors = ModelState });
+        }
+
         try
         {
             // If user is authenticated, automatically link the Auth0 ID
@@ -173,15 +179,45 @@ public class OwnersController : ControllerBase
             // Validation error (e.g., invalid CityId)
             return BadRequest(new { error = ex.Message });
         }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+        {
+            // Database-specific errors
+            Console.WriteLine($"[OwnersController] Database error: {dbEx.Message}");
+            if (dbEx.InnerException != null)
+                Console.WriteLine($"[OwnersController] Inner: {dbEx.InnerException.Message}");
+            
+            return StatusCode(500, new { 
+                error = "Database error", 
+                message = "Failed to save owner to database. Please check database connection." 
+            });
+        }
+        catch (Npgsql.NpgsqlException npgsqlEx)
+        {
+            // PostgreSQL connection errors
+            Console.WriteLine($"[OwnersController] PostgreSQL error: {npgsqlEx.Message}");
+            
+            return StatusCode(500, new { 
+                error = "Database connection error", 
+                message = "Cannot connect to database. Please check database configuration." 
+            });
+        }
         catch (Exception ex)
         {
-            // Log error but don't expose internal details
+            // Log full error details
             Console.WriteLine($"[OwnersController] CreateOwner error: {ex.Message}");
+            Console.WriteLine($"[OwnersController] Stack trace: {ex.StackTrace}");
             if (ex.InnerException != null)
+            {
                 Console.WriteLine($"[OwnersController] Inner: {ex.InnerException.Message}");
+                Console.WriteLine($"[OwnersController] Inner stack: {ex.InnerException.StackTrace}");
+            }
             
-            // Return 500 with generic message
-            return StatusCode(500, new { error = "Failed to create owner", message = "An error occurred while creating the owner profile" });
+            // Return 500 with more details for debugging
+            return StatusCode(500, new { 
+                error = "Failed to create owner", 
+                message = ex.Message,
+                type = ex.GetType().Name
+            });
         }
     }
 
