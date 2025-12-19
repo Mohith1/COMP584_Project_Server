@@ -337,18 +337,6 @@ Console.WriteLine("[STARTUP] Application built successfully");
 // CORS must be before authentication/authorization
 app.UseCors("AllowFrontend");
 
-// Handle preflight OPTIONS requests
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.StatusCode = 200;
-        await context.Response.CompleteAsync();
-        return;
-    }
-    await next();
-});
-
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
