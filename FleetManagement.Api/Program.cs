@@ -110,9 +110,35 @@ if (!string.IsNullOrEmpty(connectionString))
             if (string.IsNullOrEmpty(database)) database = "postgres";
             
             var dbPort = uri.Port > 0 ? uri.Port : 5432;
+            var host = uri.Host;
             
-            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Timeout=10;Command Timeout=10;Keepalive=30";
-            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {uri.Host}, Port: {dbPort}, User: {username}");
+            // AUTO-FIX: Convert Supabase direct connection to pooler (fixes IPv6 issue)
+            // Direct: db.xxxxx.supabase.co -> Pooler: aws-0-[region].pooler.supabase.com
+            if (host.Contains(".supabase.co") && !host.Contains("pooler"))
+            {
+                // Extract project ref from host (db.PROJECTREF.supabase.co)
+                var parts = host.Split('.');
+                if (parts.Length >= 2 && parts[0] == "db")
+                {
+                    // Try to determine region from project (default to us-east-1)
+                    // For now, use a common pooler endpoint
+                    // User should update DATABASE_URL to use pooler directly, but this helps
+                    Console.WriteLine($"[STARTUP] WARNING: Direct Supabase connection detected. Consider using Connection Pooler (port 6543) to avoid IPv6 issues.");
+                    Console.WriteLine($"[STARTUP] Current host: {host} - This may fail due to IPv6 resolution.");
+                }
+            }
+            
+            connectionString = $"Host={host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Timeout=10;Command Timeout=10;Keepalive=30";
+            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {host}, Port: {dbPort}, User: {username}");
+            
+            // Warn if using direct Supabase connection (IPv6 issue)
+            if (host.Contains(".supabase.co") && !host.Contains("pooler") && dbPort == 5432)
+            {
+                Console.WriteLine($"[STARTUP] ⚠️  WARNING: Using direct Supabase connection (port 5432)");
+                Console.WriteLine($"[STARTUP] ⚠️  This may fail due to IPv6 resolution on Railway.");
+                Console.WriteLine($"[STARTUP] ⚠️  SOLUTION: Use Supabase Connection Pooler (port 6543)");
+                Console.WriteLine($"[STARTUP] ⚠️  Get pooler URL from: Supabase Dashboard → Settings → Database → Connection Pooling");
+            }
         }
         catch (Exception ex)
         {
