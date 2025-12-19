@@ -318,6 +318,30 @@ app.MapGet("/health", () => Results.Ok(new
 .WithName("HealthCheck")
 .WithOpenApi();
 
+// Debug endpoint to test database
+app.MapGet("/debug/db", async (FleetDbContext db) =>
+{
+    var result = new Dictionary<string, object?>();
+    result["timestamp"] = DateTime.UtcNow;
+    result["db_type"] = db.Database.IsNpgsql() ? "PostgreSQL" : "InMemory";
+    
+    try
+    {
+        result["can_connect"] = await db.Database.CanConnectAsync();
+        result["country_count"] = await db.Countries.CountAsync();
+        result["city_count"] = await db.Cities.CountAsync();
+    }
+    catch (Exception ex)
+    {
+        result["error"] = ex.Message;
+        result["inner_error"] = ex.InnerException?.Message;
+    }
+    
+    return Results.Ok(result);
+})
+.WithName("DebugDb")
+.WithOpenApi();
+
 app.MapGet("/", () => Results.Ok(new
 {
     name = "Fleet Management API",
