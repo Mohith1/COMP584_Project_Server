@@ -340,7 +340,7 @@ Console.WriteLine("  - /hub/telemetry");
 app.MapControllers();
 
 // ===========================================
-// 13. DATABASE MIGRATION (non-blocking)
+// 13. DATABASE CONNECTION TEST (non-blocking)
 // ===========================================
 try
 {
@@ -349,9 +349,17 @@ try
     
     if (context.Database.IsNpgsql())
     {
-        Console.WriteLine("[STARTUP] Running database migrations...");
-        await context.Database.MigrateAsync();
-        Console.WriteLine("[STARTUP] Database migrations completed");
+        // For Supabase: DO NOT run migrations - tables are created via SQL seed script
+        // Just test the connection
+        Console.WriteLine("[STARTUP] Testing PostgreSQL connection...");
+        var canConnect = await context.Database.CanConnectAsync();
+        Console.WriteLine($"[STARTUP] PostgreSQL connection: {(canConnect ? "SUCCESS" : "FAILED")}");
+        
+        if (canConnect)
+        {
+            var countryCount = await context.Countries.CountAsync();
+            Console.WriteLine($"[STARTUP] Found {countryCount} countries in database");
+        }
     }
     else
     {
@@ -362,8 +370,9 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"[STARTUP] Database setup warning: {ex.Message}");
-    // Don't crash - the app can still serve health checks and some endpoints
+    Console.WriteLine($"[STARTUP] Database setup error: {ex.Message}");
+    if (ex.InnerException != null)
+        Console.WriteLine($"[STARTUP] Inner: {ex.InnerException.Message}");
 }
 
 Console.WriteLine($"[STARTUP] Server starting on http://0.0.0.0:{port}");
