@@ -152,19 +152,19 @@ public class OwnersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<OwnerDto>> CreateOwner(CreateOwnerDto createDto)
     {
-        // If user is authenticated, automatically link the Auth0 ID
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.FindFirst("nameid")?.Value;
-
-        // If authenticated and no Auth0UserId provided, use the claim
-        if (!string.IsNullOrEmpty(userIdClaim) && string.IsNullOrEmpty(createDto.Auth0UserId))
-        {
-            createDto.Auth0UserId = userIdClaim;
-        }
-
         try
         {
+            // If user is authenticated, automatically link the Auth0 ID
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst("nameid")?.Value;
+
+            // If authenticated and no Auth0UserId provided, use the claim
+            if (!string.IsNullOrEmpty(userIdClaim) && string.IsNullOrEmpty(createDto.Auth0UserId))
+            {
+                createDto.Auth0UserId = userIdClaim;
+            }
+
             var owner = await _ownerService.CreateOwnerAsync(createDto);
             return CreatedAtAction(nameof(GetOwner), new { id = owner.Id }, owner);
         }
@@ -172,6 +172,16 @@ public class OwnersController : ControllerBase
         {
             // Validation error (e.g., invalid CityId)
             return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't expose internal details
+            Console.WriteLine($"[OwnersController] CreateOwner error: {ex.Message}");
+            if (ex.InnerException != null)
+                Console.WriteLine($"[OwnersController] Inner: {ex.InnerException.Message}");
+            
+            // Return 500 with generic message
+            return StatusCode(500, new { error = "Failed to create owner", message = "An error occurred while creating the owner profile" });
         }
     }
 
