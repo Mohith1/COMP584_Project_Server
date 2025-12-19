@@ -103,10 +103,10 @@ if (!string.IsNullOrEmpty(connectionString))
             var database = uri.AbsolutePath.TrimStart('/');
             if (string.IsNullOrEmpty(database)) database = "postgres";
             
-            var port = uri.Port > 0 ? uri.Port : 5432;
+            var dbPort = uri.Port > 0 ? uri.Port : 5432;
             
-            connectionString = $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
-            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {uri.Host}, Port: {port}, User: {username}");
+            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {uri.Host}, Port: {dbPort}, User: {username}");
         }
         catch (Exception ex)
         {
