@@ -15,6 +15,12 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // ===========================================
+// 0. FORCE IPv4 (Railway/Supabase IPv6 issue)
+// ===========================================
+// Supabase may resolve to IPv6, but Railway can't connect via IPv6
+AppContext.SetSwitch("System.Net.DisableIPv6", true);
+
+// ===========================================
 // 0. CONFIGURE PORT FOR RAILWAY
 // ===========================================
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
@@ -105,7 +111,7 @@ if (!string.IsNullOrEmpty(connectionString))
             
             var dbPort = uri.Port > 0 ? uri.Port : 5432;
             
-            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
             Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {uri.Host}, Port: {dbPort}, User: {username}");
         }
         catch (Exception ex)
