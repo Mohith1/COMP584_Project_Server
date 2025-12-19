@@ -47,44 +47,15 @@ public class OwnersController : ControllerBase
     }
 
     [HttpGet("me")]
-    [Authorize]
-    public async Task<ActionResult<OwnerDto>> GetCurrentOwner()
+    [AllowAnonymous]
+    public ActionResult<OwnerDto?> GetCurrentOwner()
     {
-        // Try to get user ID - handles both GUID (internal) and string (Auth0) formats
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.FindFirst("nameid")?.Value;
-
-        if (string.IsNullOrEmpty(userIdClaim))
-        {
-            return Unauthorized(new { error = "Unable to identify the current user from token" });
-        }
-
-        OwnerDto? owner = null;
-
-        // Try Auth0 string ID first (format like "auth0|123456789")
-        if (userIdClaim.Contains('|') || !Guid.TryParse(userIdClaim, out _))
-        {
-            owner = await _ownerService.GetOwnerByAuth0UserIdAsync(userIdClaim);
-        }
-        
-        // Fallback to internal GUID-based IdentityUserId
-        if (owner == null && Guid.TryParse(userIdClaim, out var guidUserId))
-        {
-            owner = await _ownerService.GetOwnerByIdentityUserIdAsync(guidUserId);
-        }
-
-        if (owner == null)
-        {
-            // Return 404 with clear message - owner needs to complete registration
-            return NotFound(new { 
-                error = "Owner profile not found", 
-                message = "Please complete registration to create your owner profile.",
-                auth0UserId = userIdClaim 
-            });
-        }
-
-        return Ok(owner);
+        // Simplified for class project:
+        // - Do NOT block the UI based on server-side owner profile
+        // - Frontend will handle showing registration or dashboard
+        //
+        // Always return 200 OK with null so the client never sees 401/404 here.
+        return Ok(null);
     }
 
     [HttpPut("me")]
