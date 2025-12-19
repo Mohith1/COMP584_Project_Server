@@ -69,11 +69,17 @@ builder.Services.AddSwaggerGen(options =>
 // ===========================================
 // 3. DATABASE CONFIGURATION
 // ===========================================
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? builder.Configuration["DATABASE_URL"]
-    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+// PRIORITY: Environment variable first (Railway sets DATABASE_URL)
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
-Console.WriteLine($"[STARTUP] Database connection string found: {!string.IsNullOrEmpty(connectionString)}");
+// Fallback to configuration if env var not set
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+}
+
+Console.WriteLine($"[STARTUP] DATABASE_URL from env: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL"))}");
+Console.WriteLine($"[STARTUP] Connection string found: {!string.IsNullOrEmpty(connectionString)}");
 
 if (!string.IsNullOrEmpty(connectionString))
 {
