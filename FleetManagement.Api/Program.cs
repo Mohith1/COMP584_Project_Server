@@ -210,6 +210,9 @@ var auth0Audience = builder.Configuration["Auth0:Audience"]
     ?? Environment.GetEnvironmentVariable("AUTH0_AUDIENCE") 
     ?? "https://fleetmanagement-api-production.up.railway.app";
 
+Console.WriteLine($"[STARTUP] Auth0 Domain: {(string.IsNullOrEmpty(auth0Domain) ? "NOT SET" : auth0Domain)}");
+Console.WriteLine($"[STARTUP] Auth0 Audience: {auth0Audience}");
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -262,9 +265,18 @@ builder.Services.AddAuthentication(options =>
         options.Authority = auth0Issuer;
         options.Audience = auth0Audience;
         
+        Console.WriteLine($"[STARTUP] ✅ Auth0 JWT validation configured");
+        Console.WriteLine($"[STARTUP]   Authority: {auth0Issuer}");
+        Console.WriteLine($"[STARTUP]   Audience: {auth0Audience}");
+        
         // Note: When Authority is set, Auth0 tokens are validated using JWKS automatically
         // Custom JWT tokens (with our symmetric key) are still validated via TokenValidationParameters
         // The middleware will try both validation methods based on the token's issuer
+    }
+    else
+    {
+        Console.WriteLine($"[STARTUP] ⚠️  WARNING: AUTH0_DOMAIN not set - Auth0 tokens will be rejected!");
+        Console.WriteLine($"[STARTUP] ⚠️  Set AUTH0_DOMAIN environment variable in Railway (e.g., dev-r81y7luxm2cmhxd4.us.auth0.com)");
     }
 
     // Configure JWT for SignalR WebSocket connections
