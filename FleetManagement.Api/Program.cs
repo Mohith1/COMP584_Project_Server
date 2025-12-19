@@ -128,7 +128,33 @@ if (!string.IsNullOrEmpty(connectionString))
                 }
             }
             
-            connectionString = $"Host={host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Timeout=10;Command Timeout=10;Keepalive=30";
+            // Configure connection string with proper timeouts and pooling for Supabase pooler
+            var connectionParams = new List<string>
+            {
+                $"Host={host}",
+                $"Port={dbPort}",
+                $"Database={database}",
+                $"Username={username}",
+                $"Password={password}",
+                "SSL Mode=Require",
+                "Trust Server Certificate=true",
+                "Timeout=30",  // Connection timeout (increased from 10)
+                "Command Timeout=30",  // Query timeout (increased from 10)
+                "Keepalive=60",  // Keep connection alive longer
+                "Pooling=true",  // Enable connection pooling
+                "Minimum Pool Size=0",  // Don't keep idle connections
+                "Maximum Pool Size=20",  // Allow more connections
+                "Connection Lifetime=0",  // Don't force connection recycling
+                "No Reset On Close=true"  // Don't reset connection on close (pooler-friendly)
+            };
+            
+            // Add pooler-specific settings if using Supabase pooler
+            if (host.Contains("pooler.supabase.com"))
+            {
+                connectionParams.Add("Application Name=FleetManagementAPI");
+            }
+            
+            connectionString = string.Join(";", connectionParams);
             Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {host}, Port: {dbPort}, User: {username}");
             
             // Warn if using direct Supabase connection (IPv6 issue)
@@ -147,7 +173,14 @@ if (!string.IsNullOrEmpty(connectionString))
     }
 
     builder.Services.AddDbContext<FleetDbContext>(options =>
-        options.UseNpgsql(connectionString));
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            // Enable retry on transient failures
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(5),
+                errorCodesToAdd: null);
+        }));
 }
 else
 {
