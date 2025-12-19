@@ -272,15 +272,23 @@ builder.Services.AddCors(options =>
         {
             if (string.IsNullOrEmpty(origin)) return false;
             
+            // Explicitly allow Vercel deployment
+            if (origin == "https://comp-584-project-client-vercel.vercel.app")
+                return true;
+            
+            // Allow localhost for development
             if (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:"))
                 return true;
             
+            // Allow any Vercel deployment
             if (origin.EndsWith(".vercel.app"))
                 return true;
             
+            // Allow Railway deployments
             if (origin.EndsWith(".railway.app"))
                 return true;
 
+            // Allow Netlify deployments
             if (origin.EndsWith(".netlify.app"))
                 return true;
 

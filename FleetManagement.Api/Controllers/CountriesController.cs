@@ -19,8 +19,21 @@ public class CountriesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CountryDto>>> GetCountries()
     {
-        var countries = await _countryService.GetAllCountriesAsync();
-        return Ok(countries);
+        try
+        {
+            var countries = await _countryService.GetAllCountriesAsync();
+            return Ok(countries);
+        }
+        catch (Exception ex)
+        {
+            // Log error (in production, use proper logging)
+            Console.WriteLine($"[CountriesController] Error: {ex.Message}");
+            if (ex.InnerException != null)
+                Console.WriteLine($"[CountriesController] Inner: {ex.InnerException.Message}");
+            
+            // Return 500 with error details (in production, sanitize this)
+            return StatusCode(500, new { error = "Failed to retrieve countries", message = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]

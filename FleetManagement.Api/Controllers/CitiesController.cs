@@ -19,8 +19,21 @@ public class CitiesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CityDto>>> GetCities([FromQuery] Guid? countryId)
     {
-        var cities = await _cityService.GetAllCitiesAsync(countryId);
-        return Ok(cities);
+        try
+        {
+            var cities = await _cityService.GetAllCitiesAsync(countryId);
+            return Ok(cities);
+        }
+        catch (Exception ex)
+        {
+            // Log error (in production, use proper logging)
+            Console.WriteLine($"[CitiesController] Error: {ex.Message}");
+            if (ex.InnerException != null)
+                Console.WriteLine($"[CitiesController] Inner: {ex.InnerException.Message}");
+            
+            // Return 500 with error details (in production, sanitize this)
+            return StatusCode(500, new { error = "Failed to retrieve cities", message = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]
