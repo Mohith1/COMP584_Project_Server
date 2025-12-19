@@ -58,11 +58,14 @@ public class FleetDbContext : IdentityDbContext<ApplicationUser, ApplicationRole
         // Configure Owner entity
         modelBuilder.Entity<Owner>(entity =>
         {
-            entity.Property(e => e.CityId).IsRequired(false);  // CityId is nullable
+            // CityId is optional
+            entity.Property(e => e.CityId).IsRequired(false);
             entity.Property(e => e.Auth0UserId).HasMaxLength(255);
-            
+
+            // Explicitly configure the relationship between Owner.City and City.Owners
+            // so EF Core does NOT create a shadow FK like CityId1.
             entity.HasOne(e => e.City)
-                .WithMany()
+                .WithMany(c => c.Owners)
                 .HasForeignKey(e => e.CityId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
@@ -98,6 +101,7 @@ public class FleetDbContext : IdentityDbContext<ApplicationUser, ApplicationRole
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FleetDbContext).Assembly);
     }
 }
+
 
 
 
