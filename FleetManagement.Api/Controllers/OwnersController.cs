@@ -182,13 +182,34 @@ public class OwnersController : ControllerBase
         catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
         {
             // Database-specific errors
-            Console.WriteLine($"[OwnersController] Database error: {dbEx.Message}");
+            var errorMsg = dbEx.Message;
+            var innerMsg = dbEx.InnerException?.Message ?? "";
+            
+            Console.WriteLine($"[OwnersController] Database error: {errorMsg}");
             if (dbEx.InnerException != null)
-                Console.WriteLine($"[OwnersController] Inner: {dbEx.InnerException.Message}");
+                Console.WriteLine($"[OwnersController] Inner: {innerMsg}");
+            
+            // Check for specific constraint violations
+            if (errorMsg.Contains("duplicate") || errorMsg.Contains("unique") || errorMsg.Contains("violates unique constraint"))
+            {
+                return Conflict(new { 
+                    error = "Duplicate entry", 
+                    message = "An owner with this information already exists" 
+                });
+            }
+            
+            if (errorMsg.Contains("foreign key") || errorMsg.Contains("constraint"))
+            {
+                return BadRequest(new { 
+                    error = "Invalid data", 
+                    message = "Referenced data does not exist (e.g., invalid CityId)" 
+                });
+            }
             
             return StatusCode(500, new { 
                 error = "Database error", 
-                message = "Failed to save owner to database. Please check database connection." 
+                message = errorMsg,
+                details = innerMsg
             });
         }
         catch (Npgsql.NpgsqlException npgsqlEx)
