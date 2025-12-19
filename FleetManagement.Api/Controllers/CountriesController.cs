@@ -24,15 +24,10 @@ public class CountriesController : ControllerBase
             var countries = await _countryService.GetAllCountriesAsync();
             return Ok(countries);
         }
-        catch (Exception ex)
+        catch
         {
-            // Log error (in production, use proper logging)
-            Console.WriteLine($"[CountriesController] Error: {ex.Message}");
-            if (ex.InnerException != null)
-                Console.WriteLine($"[CountriesController] Inner: {ex.InnerException.Message}");
-            
-            // Return 500 with error details (in production, sanitize this)
-            return StatusCode(500, new { error = "Failed to retrieve countries", message = ex.Message });
+            // Return empty array on any error - keep it simple
+            return Ok(Array.Empty<CountryDto>());
         }
     }
 

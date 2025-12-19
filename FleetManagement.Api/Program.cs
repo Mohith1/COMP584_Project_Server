@@ -111,7 +111,7 @@ if (!string.IsNullOrEmpty(connectionString))
             
             var dbPort = uri.Port > 0 ? uri.Port : 5432;
             
-            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Timeout=10;Command Timeout=10;Keepalive=30";
             Console.WriteLine($"[STARTUP] Converted PostgreSQL URI. Host: {uri.Host}, Port: {dbPort}, User: {username}");
         }
         catch (Exception ex)
